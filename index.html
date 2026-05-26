@@ -840,8 +840,12 @@ function toggleMemberTypeFields(){
 
 async function loadMembers(){
   renderAdminBar();
-  const {data} = await sb.from('members').select('*').order('order_num',{ascending:true});
-  membersData = data||[];
+  // ลองดึงข้อมูลพร้อม order ก่อน ถ้า error (เช่น คอลัมน์ order_num ไม่มี) ให้ดึงแบบไม่ sort
+  let result = await sb.from('members').select('*').order('order_num',{ascending:true});
+  if(result.error){
+    result = await sb.from('members').select('*');
+  }
+  membersData = result.data || [];
   renderMembers();
 }
 
@@ -859,7 +863,11 @@ function renderMembers(){
   const list = membersData.filter(m=>(m.type||'asom')===memberTab);
   const el = document.getElementById('memberGrid');
   if(list.length===0){
-    el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--gray-mid)"><div style="font-size:48px;margin-bottom:12px">${memberTab==='medical'?'👨‍⚕️':'🌿'}</div><p>ยังไม่มีข้อมูล</p></div>`;
+    const total = membersData.length;
+    const hint = total > 0
+      ? `<p style="font-size:12px;color:var(--gray-mid);margin-top:6px">โหลดมา ${total} รายการ แต่ไม่มีประเภท "${memberTab}" — รัน SQL: <code style="background:#f0f4f2;padding:2px 6px;border-radius:4px">UPDATE members SET type='asom' WHERE type IS NULL;</code></p>`
+      : `<p style="font-size:12px;color:var(--gray-mid);margin-top:6px">ยังไม่มีสมาชิกในระบบ กด ➕ เพิ่มสมาชิก</p>`;
+    el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--gray-mid)"><div style="font-size:48px;margin-bottom:12px">${memberTab==='medical'?'👨‍⚕️':'🌿'}</div><p>ยังไม่มีข้อมูล</p>${hint}</div>`;
     return;
   }
   if(memberTab==='medical'){
@@ -1111,7 +1119,11 @@ function renderMembers(){
   const list = membersData.filter(m=>(m.type||'asom')===memberTab);
   const el = document.getElementById('memberGrid');
   if(list.length===0){
-    el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--gray-mid)"><div style="font-size:48px;margin-bottom:12px">${memberTab==='medical'?'👨‍⚕️':'🌿'}</div><p>ยังไม่มีข้อมูล</p></div>`;
+    const total = membersData.length;
+    const hint = total > 0
+      ? `<p style="font-size:12px;color:var(--gray-mid);margin-top:6px">โหลดมา ${total} รายการ แต่ไม่มีประเภท "${memberTab}" — รัน SQL: <code style="background:#f0f4f2;padding:2px 6px;border-radius:4px">UPDATE members SET type='asom' WHERE type IS NULL;</code></p>`
+      : `<p style="font-size:12px;color:var(--gray-mid);margin-top:6px">ยังไม่มีสมาชิกในระบบ กด ➕ เพิ่มสมาชิก</p>`;
+    el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--gray-mid)"><div style="font-size:48px;margin-bottom:12px">${memberTab==='medical'?'👨‍⚕️':'🌿'}</div><p>ยังไม่มีข้อมูล</p>${hint}</div>`;
     return;
   }
   if(memberTab==='medical'){
