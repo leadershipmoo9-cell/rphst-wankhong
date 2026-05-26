@@ -851,7 +851,7 @@ function switchMemberTab(t){
 }
 
 function renderMembers(){
-  const list = membersData.filter(m=>m.type===memberTab);
+  const list = membersData.filter(m=>(m.type||'asom')===memberTab);
   const el = document.getElementById('memberGrid');
   if(list.length===0){
     el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--gray-mid)"><div style="font-size:48px;margin-bottom:12px">${memberTab==='medical'?'👨‍⚕️':'🌿'}</div><p>ยังไม่มีข้อมูล</p></div>`;
@@ -1103,7 +1103,7 @@ function previewMemberPhoto(inp){
 }
 
 function renderMembers(){
-  const list = membersData.filter(m=>m.type===memberTab);
+  const list = membersData.filter(m=>(m.type||'asom')===memberTab);
   const el = document.getElementById('memberGrid');
   if(list.length===0){
     el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--gray-mid)"><div style="font-size:48px;margin-bottom:12px">${memberTab==='medical'?'👨‍⚕️':'🌿'}</div><p>ยังไม่มีข้อมูล</p></div>`;
