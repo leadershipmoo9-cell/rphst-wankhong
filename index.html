@@ -160,7 +160,36 @@
     .toast-container{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px}
     .toast-item{background:var(--green-dark);color:white;padding:12px 20px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;max-width:320px;animation:toastIn .3s ease}
     .toast-item.error{background:#c62828}
-    @keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── ORG CHART ── */
+.org-village-block{margin-bottom:36px}
+.org-village-header{font-family:'Kanit',sans-serif;font-size:17px;color:var(--green-dark);font-weight:700;margin-bottom:18px;padding:10px 18px;background:linear-gradient(90deg,var(--green-pale),white);border-radius:var(--radius);border-left:5px solid var(--green-dark);display:flex;align-items:center;gap:10px}
+.org-tier{margin-bottom:14px}
+.org-tier-label{font-size:11px;font-weight:700;color:var(--gray-mid);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-left:4px}
+.org-row{display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-start}
+.org-card{background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 12px;text-align:center;width:150px;flex-shrink:0;border:2px solid transparent;transition:.2s;cursor:pointer;position:relative}
+.org-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(26,92,56,.18)}
+.org-card.tier-1{border-color:var(--gold);background:linear-gradient(135deg,#fffdf0,white)}
+.org-card.tier-2{border-color:var(--green-mid)}
+.org-card.tier-3{border-color:#81c784}
+.org-card.tier-4{border-color:#aed581}
+.org-card.tier-5{border-color:#e0e0e0}
+.org-pos-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:700;border-radius:99px;padding:2px 10px;color:white}
+.badge-tier-1{background:var(--gold)}
+.badge-tier-2{background:var(--green-mid)}
+.badge-tier-3{background:#43a047}
+.badge-tier-4{background:#7cb342}
+.badge-tier-5{background:#9e9e9e}
+.org-photo{width:64px;height:64px;border-radius:50%;margin:10px auto 8px;object-fit:cover;border:3px solid var(--green-light);background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:28px}
+.org-name{font-weight:700;font-size:12px;color:var(--text-main);margin-bottom:2px;line-height:1.3}
+.org-age{font-size:10px;color:var(--gray-mid);margin-bottom:3px}
+.org-phone{font-size:12px;color:var(--green-dark);font-weight:700}
+/* medical list */
+.medical-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px}
+.medical-card{background:white;border-radius:var(--radius);padding:16px;text-align:center;box-shadow:var(--shadow);border:2px solid var(--green-light);cursor:pointer;transition:.2s}
+.medical-card:hover{transform:translateY(-2px);border-color:var(--green-dark)}
+.med-order{position:absolute;top:8px;left:8px;background:var(--green-dark);color:white;border-radius:50%;width:22px;height:22px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+@keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     .admin-bar{background:var(--gold-light);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1.5px solid var(--gold)}
     .admin-badge{background:var(--gold);color:white;border-radius:99px;padding:4px 14px;font-size:12px;font-weight:700}
     .login-box{background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 28px;max-width:400px;margin:40px auto}
@@ -497,7 +526,18 @@
     </div>
     <div id="editMemberAgeDisplay" style="display:none;background:var(--green-pale);border-radius:8px;padding:7px 14px;margin-bottom:12px;font-size:13px;font-weight:700;color:var(--green-dark)"></div>
 
-    <div class="form-group"><label>ตำแหน่ง</label><input id="editMemberRole" placeholder="ตำแหน่ง" /></div>
+    <div class="form-group"><label>ตำแหน่ง/หน้าที่</label><input id="editMemberRole" placeholder="เช่น นักวิชาการสาธารณสุข" /></div>
+    <!-- ตำแหน่งใน อสม. -->
+    <div class="form-group" id="editMemberPosGroup" style="display:none">
+      <label>ตำแหน่งใน อสม. *</label>
+      <select id="editMemberPosition">
+        <option value="1|ประธาน">ประธาน อสม.</option>
+        <option value="2|รองประธาน">รองประธาน อสม.</option>
+        <option value="3|เลขานุการ">เลขานุการ อสม.</option>
+        <option value="4|เหรัญญิก">เหรัญญิก อสม.</option>
+        <option value="5|สมาชิก" selected>สมาชิก อสม.</option>
+      </select>
+    </div>
     <div class="form-group"><label>เบอร์โทร</label><input id="editMemberPhone" placeholder="0XX-XXX-XXXX" /></div>
 
     <!-- หมู่ เฉพาะ อสม. -->
@@ -790,6 +830,7 @@ function calcMemberAge(){
 function toggleMemberTypeFields(){
   const t = document.getElementById('editMemberType').value;
   document.getElementById('editMemberVillageGroup').style.display = t==='asom' ? 'block' : 'none';
+  document.getElementById('editMemberPosGroup').style.display = t==='asom' ? 'block' : 'none';
 }
 
 async function loadMembers(){
@@ -817,31 +858,71 @@ function renderMembers(){
     return;
   }
   if(memberTab==='medical'){
-    el.innerHTML=`<div class="member-grid">${list.map(m=>memberCard(m)).join('')}</div>`;
+    // แสดงเรียงลำดับ order_num
+    const sorted = [...list].sort((a,b)=>(a.order_num||999)-(b.order_num||999));
+    el.innerHTML=`<div class="medical-list">${sorted.map((m,i)=>medicalCard(m,i+1)).join('')}</div>`;
   } else {
+    // ผังองค์กรแยกหมู่
     const VILLAGE_ORDER=[8,9,11,13,14,16];
     const villages=[...new Set(list.map(m=>parseInt(m.village)).filter(Boolean))].sort((a,b)=>VILLAGE_ORDER.indexOf(a)-VILLAGE_ORDER.indexOf(b));
-    if(villages.length>0){
-      el.innerHTML=villages.map(v=>`<div class="village-group"><div class="village-title">หมู่ ${v}</div><div class="member-grid">${list.filter(m=>parseInt(m.village)===v).map(m=>memberCard(m)).join('')}</div></div>`).join('');
-    } else {
-      el.innerHTML=`<div class="member-grid">${list.map(m=>memberCard(m)).join('')}</div>`;
-    }
+    const TIERS=[
+      {order:1,label:'ประธาน อสม.',cls:'tier-1',badge:'badge-tier-1'},
+      {order:2,label:'รองประธาน อสม.',cls:'tier-2',badge:'badge-tier-2'},
+      {order:3,label:'เลขานุการ อสม.',cls:'tier-3',badge:'badge-tier-3'},
+      {order:4,label:'เหรัญญิก อสม.',cls:'tier-4',badge:'badge-tier-4'},
+      {order:5,label:'สมาชิก อสม.',cls:'tier-5',badge:'badge-tier-5'},
+    ];
+    el.innerHTML = villages.map(v=>{
+      const vMembers = list.filter(m=>parseInt(m.village)===v).sort((a,b)=>(a.position_order||5)-(b.position_order||5));
+      const tiersHtml = TIERS.map(t=>{
+        const members = vMembers.filter(m=>(m.position_order||5)===t.order);
+        if(members.length===0) return '';
+        return `<div class="org-tier">
+          <div class="org-tier-label">${t.label}</div>
+          <div class="org-row">${members.map(m=>orgCard(m,t)).join('')}</div>
+        </div>`;
+      }).join('');
+      return `<div class="org-village-block">
+        <div class="org-village-header">🏘️ หมู่ ${v} <span style="font-size:13px;color:var(--gray-mid);font-weight:400">(${vMembers.length} คน)</span></div>
+        ${tiersHtml}
+      </div>`;
+    }).join('');
   }
 }
 
-function memberCard(m){
+function medicalCard(m, idx){
   const img = m.photo_url
-    ? `<img src="${m.photo_url}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--green-light);margin:0 auto 10px;display:block" />`
-    : `<div class="member-photo" style="margin:0 auto 10px">${m.type==='medical'?'👨‍⚕️':'🌿'}</div>`;
-  const ageStr = m.birthdate ? (()=>{ const a=calcAge(m.birthdate); return `<div style="font-size:11px;color:var(--gray-mid)">${a.y} ปี</div>`; })() : '';
-  const editBtn = isAdmin ? `
-    <button class="btn-edit" style="font-size:11px;padding:3px 10px;margin-top:6px" onclick="event.stopPropagation();openEditMember('${m.id}')">✏️ แก้ไข</button>
-    <button class="btn-danger" style="font-size:11px;padding:3px 10px;margin-top:4px" onclick="event.stopPropagation();deleteMember('${m.id}')">ลบ</button>` : '';
-  return `<div class="member-card" onclick="showMemberDetail('${m.id}')">${img}
-    <div class="member-name">${m.name}</div>
-    <div class="member-role">${m.role||''}</div>
+    ? `<img src="${m.photo_url}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--green-light);margin:0 auto 8px;display:block" />`
+    : `<div style="width:64px;height:64px;border-radius:50%;background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 8px">👨‍⚕️</div>`;
+  const ageStr = m.birthdate ? (()=>{ const a=calcAge(m.birthdate); return `<div style="font-size:10px;color:var(--gray-mid)">${a.y} ปี</div>`; })() : '';
+  const editBtn = isAdmin ? `<div style="display:flex;gap:4px;justify-content:center;margin-top:8px">
+    <button class="btn-edit" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();openEditMember('${m.id}')">✏️</button>
+    <button class="btn-danger" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();deleteMember('${m.id}')">ลบ</button></div>` : '';
+  return `<div class="medical-card" style="position:relative" onclick="showMemberDetail('${m.id}')">
+    <div class="med-order">${idx}</div>
+    ${img}
+    <div style="font-weight:700;font-size:12px;color:var(--text-main);margin-bottom:2px">${m.name}</div>
+    <div style="font-size:11px;color:var(--gray-mid);margin-bottom:2px">${m.role||''}</div>
     ${ageStr}
-    <div class="member-phone">${m.phone||''}</div>
+    <div style="font-size:12px;color:var(--green-dark);font-weight:700">${m.phone||''}</div>
+    ${editBtn}</div>`;
+}
+
+function orgCard(m, tier){
+  const img = m.photo_url
+    ? `<img class="org-photo" src="${m.photo_url}" />`
+    : `<div class="org-photo">${'🌿'}</div>`;
+  const ageStr = m.birthdate ? (()=>{ const a=calcAge(m.birthdate); return `<div class="org-age">${a.y} ปี</div>`; })() : '';
+  const editBtn = isAdmin ? `<div style="display:flex;gap:4px;justify-content:center;margin-top:6px">
+    <button class="btn-edit" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();openEditMember('${m.id}')">✏️</button>
+    <button class="btn-danger" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();deleteMember('${m.id}')">ลบ</button></div>` : '';
+  return `<div class="org-card ${tier.cls}" onclick="showMemberDetail('${m.id}')">
+    <div class="org-pos-badge ${tier.badge}">${m.position_label||'สมาชิก'}</div>
+    ${img}
+    <div class="org-name">${m.name}</div>
+    ${m.role?`<div style="font-size:10px;color:var(--gray-mid);margin-bottom:2px">${m.role}</div>`:''}
+    ${ageStr}
+    <div class="org-phone">${m.phone||''}</div>
     ${editBtn}</div>`;
 }
 
@@ -910,7 +991,13 @@ function openEditMember(id){
     document.getElementById('editMemberBirthYear').value='';
     document.getElementById('editMemberAgeDisplay').style.display='none';
   }
-  document.getElementById('editMemberRole').value=m.role||'';
+  let position_order=999, position_label='';
+  if(type==='asom'){
+    const pv = document.getElementById('editMemberPosition').value.split('|');
+    position_order = parseInt(pv[0])||5;
+    position_label = pv[1]||'สมาชิก';
+  }
+  const payload={name,role:document.getElementById('editMemberRole').value,phone:document.getElementById('editMemberPhone').value,village:type==='asom'?(parseInt(document.getElementById('editMemberVillage').value)||null):null,type,photo_url,birthdate,position_order,position_label};
   document.getElementById('editMemberPhone').value=m.phone||'';
   document.getElementById('editMemberVillage').value=m.village||'';
   document.getElementById('editMemberType').value=m.type;
