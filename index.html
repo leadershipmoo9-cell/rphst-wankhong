@@ -443,12 +443,83 @@
   <div class="modal">
     <button class="modal-close" onclick="closeModal('modalMemberEdit')">×</button>
     <h2 id="memberEditTitle">เพิ่มสมาชิก</h2>
-    <div class="form-group"><label>ประเภท</label><select id="editMemberType"><option value="medical">บุคลากรทางการแพทย์/พนักงาน</option><option value="asom">อสม.</option></select></div>
-    <div class="form-group"><label>ชื่อ-นามสกุล *</label><input id="editMemberName" placeholder="ชื่อ-นามสกุล" /></div>
+    <div class="form-group"><label>ประเภท</label>
+      <select id="editMemberType" onchange="toggleMemberTypeFields()">
+        <option value="medical">บุคลากรทางการแพทย์/พนักงาน</option>
+        <option value="asom">อสม.</option>
+      </select>
+    </div>
+
+    <!-- ชื่อแยกช่อง -->
+    <div class="form-row">
+      <div class="form-group">
+        <label>คำนำหน้า *</label>
+        <select id="editMemberPrefix">
+          <option value="">-- เลือก --</option>
+          <option>นาย</option>
+          <option>นาง</option>
+          <option>นางสาว</option>
+          <option>เด็กชาย</option>
+          <option>เด็กหญิง</option>
+          <option>ดร.</option>
+          <option>นพ.</option>
+          <option>พญ.</option>
+          <option>ทพ.</option>
+          <option>ทพญ.</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ชื่อ *</label>
+        <input id="editMemberFirstName" placeholder="ชื่อ" />
+      </div>
+      <div class="form-group">
+        <label>นามสกุล *</label>
+        <input id="editMemberLastName" placeholder="นามสกุล" />
+      </div>
+    </div>
+
+    <!-- วันเกิด + อายุ -->
+    <div class="form-row">
+      <div class="form-group">
+        <label>วันเกิด</label>
+        <div style="display:flex;gap:6px">
+          <select id="editMemberBirthDay" style="flex:1;padding:8px 6px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" onchange="calcMemberAge()">
+            <option value="">วัน</option>
+          </select>
+          <select id="editMemberBirthMonth" style="flex:1.5;padding:8px 6px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" onchange="calcMemberAge()">
+            <option value="">เดือน</option>
+          </select>
+          <select id="editMemberBirthYear" style="flex:1.5;padding:8px 6px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" onchange="calcMemberAge()">
+            <option value="">ปี พ.ศ.</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="editMemberAgeDisplay" style="display:none;background:var(--green-pale);border-radius:8px;padding:7px 14px;margin-bottom:12px;font-size:13px;font-weight:700;color:var(--green-dark)"></div>
+
     <div class="form-group"><label>ตำแหน่ง</label><input id="editMemberRole" placeholder="ตำแหน่ง" /></div>
     <div class="form-group"><label>เบอร์โทร</label><input id="editMemberPhone" placeholder="0XX-XXX-XXXX" /></div>
-    <div class="form-group" id="editMemberVillageGroup"><label>หมู่</label><input type="number" id="editMemberVillage" placeholder="หมายเลขหมู่" min="1" /></div>
-    <div class="form-group"><label>รูปภาพ</label><div id="editMemberPhotoPreview"></div><button class="btn-outline" onclick="document.getElementById('editMemberPhotoFile').click()">📷 เลือกรูป</button><input type="file" id="editMemberPhotoFile" accept="image/*" style="display:none" onchange="previewMemberPhoto(this)" /></div>
+
+    <!-- หมู่ เฉพาะ อสม. -->
+    <div class="form-group" id="editMemberVillageGroup" style="display:none">
+      <label>หมู่ *</label>
+      <select id="editMemberVillage">
+        <option value="">-- เลือกหมู่ --</option>
+        <option value="8">หมู่ 8</option>
+        <option value="9">หมู่ 9</option>
+        <option value="11">หมู่ 11</option>
+        <option value="13">หมู่ 13</option>
+        <option value="14">หมู่ 14</option>
+        <option value="16">หมู่ 16</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>รูปภาพ</label>
+      <div id="editMemberPhotoPreview"></div>
+      <button class="btn-outline" onclick="document.getElementById('editMemberPhotoFile').click()">📷 เลือกรูป</button>
+      <input type="file" id="editMemberPhotoFile" accept="image/*" style="display:none" onchange="previewMemberPhoto(this)" />
+    </div>
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveMember()">💾 บันทึก</button>
   </div>
 </div>
@@ -685,12 +756,49 @@ function doAdminLogin(){
 // ============================================================
 //  MEMBERS
 // ============================================================
+
+// สร้าง dropdown วัน/เดือน/ปี พ.ศ. สำหรับ modal สมาชิก
+function initMemberBirthDropdowns(){
+  const dayEl = document.getElementById('editMemberBirthDay');
+  const monEl = document.getElementById('editMemberBirthMonth');
+  const yrEl  = document.getElementById('editMemberBirthYear');
+  if(dayEl.options.length > 1) return; // init แล้ว
+  for(let d=1;d<=31;d++){
+    const o=document.createElement('option'); o.value=d; o.textContent=d; dayEl.appendChild(o);
+  }
+  MONTHS_TH.forEach((m,i)=>{
+    const o=document.createElement('option'); o.value=i+1; o.textContent=m; monEl.appendChild(o);
+  });
+  const curYearBE = new Date().getFullYear()+543;
+  for(let y=curYearBE;y>=curYearBE-100;y--){
+    const o=document.createElement('option'); o.value=y; o.textContent=y; yrEl.appendChild(o);
+  }
+}
+
+function calcMemberAge(){
+  const d=parseInt(document.getElementById('editMemberBirthDay').value);
+  const mo=parseInt(document.getElementById('editMemberBirthMonth').value);
+  const y=parseInt(document.getElementById('editMemberBirthYear').value);
+  const el=document.getElementById('editMemberAgeDisplay');
+  if(!d||!mo||!y){ el.style.display='none'; return; }
+  const birthISO = new Date((y-543), mo-1, d);
+  const age = calcAge(birthISO.toISOString().substring(0,10));
+  el.textContent = `อายุ ${age.y} ปี ${age.m} เดือน ${age.d} วัน`;
+  el.style.display = 'block';
+}
+
+function toggleMemberTypeFields(){
+  const t = document.getElementById('editMemberType').value;
+  document.getElementById('editMemberVillageGroup').style.display = t==='asom' ? 'block' : 'none';
+}
+
 async function loadMembers(){
   renderAdminBar();
   const {data} = await sb.from('members').select('*').order('order_num',{ascending:true});
   membersData = data||[];
   renderMembers();
 }
+
 function switchMemberTab(t){
   memberTab=t;
   document.getElementById('tabMedical').className='tab-btn'+(t==='medical'?' active':'');
@@ -700,58 +808,157 @@ function switchMemberTab(t){
     : 'สมาชิกอาสาสมัครสาธารณสุขประจำหมู่บ้าน (อสม.) รพสต.แวนโค้ง แยกตามหมู่';
   renderMembers();
 }
+
 function renderMembers(){
   const list = membersData.filter(m=>m.type===memberTab);
   const el = document.getElementById('memberGrid');
-  if(list.length===0){ el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--gray-mid)"><div style="font-size:48px;margin-bottom:12px">${memberTab==='medical'?'👨‍⚕️':'🌿'}</div><p>ยังไม่มีข้อมูล</p></div>`; return; }
+  if(list.length===0){
+    el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--gray-mid)"><div style="font-size:48px;margin-bottom:12px">${memberTab==='medical'?'👨‍⚕️':'🌿'}</div><p>ยังไม่มีข้อมูล</p></div>`;
+    return;
+  }
   if(memberTab==='medical'){
     el.innerHTML=`<div class="member-grid">${list.map(m=>memberCard(m)).join('')}</div>`;
   } else {
-    const villages=[...new Set(list.map(m=>m.village).filter(Boolean))].sort((a,b)=>a-b);
+    const VILLAGE_ORDER=[8,9,11,13,14,16];
+    const villages=[...new Set(list.map(m=>parseInt(m.village)).filter(Boolean))].sort((a,b)=>VILLAGE_ORDER.indexOf(a)-VILLAGE_ORDER.indexOf(b));
     if(villages.length>0){
-      el.innerHTML=villages.map(v=>`<div class="village-group"><div class="village-title">หมู่ ${v}</div><div class="member-grid">${list.filter(m=>m.village===v).map(m=>memberCard(m)).join('')}</div></div>`).join('');
+      el.innerHTML=villages.map(v=>`<div class="village-group"><div class="village-title">หมู่ ${v}</div><div class="member-grid">${list.filter(m=>parseInt(m.village)===v).map(m=>memberCard(m)).join('')}</div></div>`).join('');
     } else {
       el.innerHTML=`<div class="member-grid">${list.map(m=>memberCard(m)).join('')}</div>`;
     }
   }
 }
+
 function memberCard(m){
   const img = m.photo_url
     ? `<img src="${m.photo_url}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--green-light);margin:0 auto 10px;display:block" />`
     : `<div class="member-photo" style="margin:0 auto 10px">${m.type==='medical'?'👨‍⚕️':'🌿'}</div>`;
-  const editBtn = isAdmin ? `<button class="btn-edit" style="font-size:11px;padding:3px 10px;margin-top:6px" onclick="event.stopPropagation();openEditMember('${m.id}')">✏️ แก้ไข</button>
+  const ageStr = m.birthdate ? (()=>{ const a=calcAge(m.birthdate); return `<div style="font-size:11px;color:var(--gray-mid)">${a.y} ปี</div>`; })() : '';
+  const editBtn = isAdmin ? `
+    <button class="btn-edit" style="font-size:11px;padding:3px 10px;margin-top:6px" onclick="event.stopPropagation();openEditMember('${m.id}')">✏️ แก้ไข</button>
     <button class="btn-danger" style="font-size:11px;padding:3px 10px;margin-top:4px" onclick="event.stopPropagation();deleteMember('${m.id}')">ลบ</button>` : '';
   return `<div class="member-card" onclick="showMemberDetail('${m.id}')">${img}
     <div class="member-name">${m.name}</div>
     <div class="member-role">${m.role||''}</div>
+    ${ageStr}
     <div class="member-phone">${m.phone||''}</div>
     ${editBtn}</div>`;
 }
+
 function showMemberDetail(id){
   const m=membersData.find(x=>x.id===id); if(!m)return;
-  const img = m.photo_url ? `<img src="${m.photo_url}" style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid var(--green-light);margin-bottom:14px" />` : `<div style="font-size:60px;margin-bottom:14px">${m.type==='medical'?'👨‍⚕️':'🌿'}</div>`;
+  const img = m.photo_url
+    ? `<img src="${m.photo_url}" style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid var(--green-light);margin-bottom:14px" />`
+    : `<div style="font-size:60px;margin-bottom:14px">${m.type==='medical'?'👨‍⚕️':'🌿'}</div>`;
+  const ageStr = m.birthdate ? (()=>{ const a=calcAge(m.birthdate); return `<div style="font-size:13px;color:var(--gray-mid);margin-bottom:4px">อายุ ${a.y} ปี ${a.m} เดือน</div>`; })() : '';
   document.getElementById('memberDetailContent').innerHTML=`${img}
     <div style="font-family:Kanit;font-size:20px;font-weight:700;color:var(--green-dark);margin-bottom:4px">${m.name}</div>
     <div style="font-size:14px;color:var(--gray-mid);margin-bottom:4px">${m.role||''}</div>
+    ${ageStr}
     ${m.village?`<div style="font-size:13px;color:var(--gray-mid);margin-bottom:16px">หมู่ ${m.village}</div>`:''}
     ${m.phone?`<a href="tel:${m.phone}" style="display:inline-flex;align-items:center;gap:8px;background:var(--green-mid);color:white;border-radius:99px;padding:10px 24px;font-size:16px;font-weight:600;text-decoration:none">📞 ${m.phone}</a>`:''}`;
   openModal('modalMemberDetail');
 }
-function openAddMember(){ editingMemberId=null; document.getElementById('memberEditTitle').textContent='➕ เพิ่มสมาชิก'; document.getElementById('editMemberName').value=''; document.getElementById('editMemberRole').value=''; document.getElementById('editMemberPhone').value=''; document.getElementById('editMemberVillage').value=''; document.getElementById('editMemberType').value=memberTab; document.getElementById('editMemberPhotoPreview').innerHTML=''; document.getElementById('editMemberPhotoFile').value=''; openModal('modalMemberEdit'); }
-function openEditMember(id){ const m=membersData.find(x=>x.id===id); if(!m)return; editingMemberId=id; document.getElementById('memberEditTitle').textContent='✏️ แก้ไขข้อมูล'; document.getElementById('editMemberName').value=m.name; document.getElementById('editMemberRole').value=m.role||''; document.getElementById('editMemberPhone').value=m.phone||''; document.getElementById('editMemberVillage').value=m.village||''; document.getElementById('editMemberType').value=m.type; document.getElementById('editMemberPhotoPreview').innerHTML=m.photo_url?`<img src="${m.photo_url}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:8px;display:block" />`:''; openModal('modalMemberEdit'); }
+
+function openAddMember(){
+  editingMemberId=null;
+  initMemberBirthDropdowns();
+  document.getElementById('memberEditTitle').textContent='➕ เพิ่มสมาชิก';
+  document.getElementById('editMemberPrefix').value='';
+  document.getElementById('editMemberFirstName').value='';
+  document.getElementById('editMemberLastName').value='';
+  document.getElementById('editMemberBirthDay').value='';
+  document.getElementById('editMemberBirthMonth').value='';
+  document.getElementById('editMemberBirthYear').value='';
+  document.getElementById('editMemberAgeDisplay').style.display='none';
+  document.getElementById('editMemberRole').value='';
+  document.getElementById('editMemberPhone').value='';
+  document.getElementById('editMemberVillage').value='';
+  document.getElementById('editMemberType').value=memberTab;
+  document.getElementById('editMemberPhotoPreview').innerHTML='';
+  document.getElementById('editMemberPhotoFile').value='';
+  memberPhotoFile=null;
+  toggleMemberTypeFields();
+  openModal('modalMemberEdit');
+}
+
+function openEditMember(id){
+  const m=membersData.find(x=>x.id===id); if(!m)return;
+  editingMemberId=id;
+  initMemberBirthDropdowns();
+  document.getElementById('memberEditTitle').textContent='✏️ แก้ไขข้อมูล';
+  // แยกชื่อ prefix/first/last จาก m.name
+  const prefixes=['นาย','นาง','นางสาว','เด็กชาย','เด็กหญิง','ดร.','นพ.','พญ.','ทพ.','ทพญ.'];
+  let prefix='', firstName='', lastName='', fullName=m.name||'';
+  const foundPrefix = prefixes.find(p=>fullName.startsWith(p));
+  if(foundPrefix){ prefix=foundPrefix; fullName=fullName.slice(foundPrefix.length).trim(); }
+  const parts=fullName.split(' ');
+  firstName=parts[0]||''; lastName=parts.slice(1).join(' ')||'';
+  document.getElementById('editMemberPrefix').value=prefix;
+  document.getElementById('editMemberFirstName').value=firstName;
+  document.getElementById('editMemberLastName').value=lastName;
+  // วันเกิด
+  if(m.birthdate){
+    const bd=new Date(m.birthdate);
+    document.getElementById('editMemberBirthDay').value=bd.getDate();
+    document.getElementById('editMemberBirthMonth').value=bd.getMonth()+1;
+    document.getElementById('editMemberBirthYear').value=bd.getFullYear()+543;
+    calcMemberAge();
+  } else {
+    document.getElementById('editMemberBirthDay').value='';
+    document.getElementById('editMemberBirthMonth').value='';
+    document.getElementById('editMemberBirthYear').value='';
+    document.getElementById('editMemberAgeDisplay').style.display='none';
+  }
+  document.getElementById('editMemberRole').value=m.role||'';
+  document.getElementById('editMemberPhone').value=m.phone||'';
+  document.getElementById('editMemberVillage').value=m.village||'';
+  document.getElementById('editMemberType').value=m.type;
+  document.getElementById('editMemberPhotoPreview').innerHTML=m.photo_url
+    ?`<img src="${m.photo_url}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:8px;display:block" />`:'';
+  memberPhotoFile=null;
+  toggleMemberTypeFields();
+  openModal('modalMemberEdit');
+}
+
 let memberPhotoFile=null;
-function previewMemberPhoto(inp){ const f=inp.files[0]; if(!f)return; memberPhotoFile=f; document.getElementById('editMemberPhotoPreview').innerHTML=`<img src="${URL.createObjectURL(f)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:8px;display:block" />`; }
+function previewMemberPhoto(inp){
+  const f=inp.files[0]; if(!f)return;
+  memberPhotoFile=f;
+  document.getElementById('editMemberPhotoPreview').innerHTML=`<img src="${URL.createObjectURL(f)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:8px;display:block" />`;
+}
+
 async function saveMember(){
-  const name=document.getElementById('editMemberName').value.trim();
-  if(!name)return toast('กรุณากรอกชื่อ','error');
+  const prefix=document.getElementById('editMemberPrefix').value;
+  const first=document.getElementById('editMemberFirstName').value.trim();
+  const last=document.getElementById('editMemberLastName').value.trim();
+  if(!first)return toast('กรุณากรอกชื่อ','error');
+  const name = [prefix,first,last].filter(Boolean).join(' ');
+  const type = document.getElementById('editMemberType').value;
+  if(type==='asom' && !document.getElementById('editMemberVillage').value)
+    return toast('กรุณาเลือกหมู่','error');
+  // วันเกิด → ISO
+  let birthdate='';
+  const bd=parseInt(document.getElementById('editMemberBirthDay').value);
+  const bm=parseInt(document.getElementById('editMemberBirthMonth').value);
+  const by=parseInt(document.getElementById('editMemberBirthYear').value);
+  if(bd&&bm&&by){
+    const ce=by-543;
+    birthdate=`${ce}-${String(bm).padStart(2,'0')}-${String(bd).padStart(2,'0')}`;
+  }
   let photo_url = editingMemberId ? (membersData.find(x=>x.id===editingMemberId)?.photo_url||'') : '';
   if(memberPhotoFile){ toast('กำลังอัปโหลดรูป...'); photo_url=await uploadCloudinary(memberPhotoFile); memberPhotoFile=null; }
-  const payload={name,role:document.getElementById('editMemberRole').value,phone:document.getElementById('editMemberPhone').value,village:parseInt(document.getElementById('editMemberVillage').value)||null,type:document.getElementById('editMemberType').value,photo_url};
+  const payload={name,role:document.getElementById('editMemberRole').value,phone:document.getElementById('editMemberPhone').value,village:type==='asom'?(parseInt(document.getElementById('editMemberVillage').value)||null):null,type,photo_url,birthdate};
   if(editingMemberId) await sb.from('members').update(payload).eq('id',editingMemberId);
   else await sb.from('members').insert(payload);
   closeModal('modalMemberEdit'); toast(editingMemberId?'แก้ไขเรียบร้อย':'เพิ่มสมาชิกเรียบร้อย'); loadMembers();
 }
-async function deleteMember(id){ if(!confirm('ลบสมาชิกนี้?'))return; await sb.from('members').delete().eq('id',id); toast('ลบเรียบร้อย'); loadMembers(); }
+
+async function deleteMember(id){
+  if(!confirm('ลบสมาชิกนี้?'))return;
+  await sb.from('members').delete().eq('id',id);
+  toast('ลบเรียบร้อย'); loadMembers();
+}
 
 // ============================================================
 //  FINANCE
