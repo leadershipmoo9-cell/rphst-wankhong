@@ -704,7 +704,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 // ============================================================
 //  GLOBALS
 // ============================================================
-let isAdmin = false;
+let isAdmin = localStorage.getItem('admin_wk') === '1';
 let membersData = [];
 let activitiesData = [];
 let financeData = [];
@@ -781,7 +781,7 @@ function renderAdminBar(){
   if(isAdmin){
     el.innerHTML=`<div class="admin-bar"><span class="admin-badge">⚙️ ผู้ดูแลระบบ</span>
       <button class="btn-primary" onclick="openAddMember()">➕ เพิ่มสมาชิก</button>
-      <button class="btn-outline" onclick="isAdmin=false;renderAdminBar();loadMembers()">ออกจากระบบ</button></div>`;
+      <button class="btn-outline" onclick="isAdmin=false;localStorage.removeItem('admin_wk');renderAdminBar();loadMembers()">ออกจากระบบ</button></div>`;
   } else {
     el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
       <button class="btn-outline" onclick="doAdminLogin()">🔐 เข้าสู่ระบบ</button></div>`;
@@ -789,8 +789,13 @@ function renderAdminBar(){
 }
 function doAdminLogin(){
   const pin = prompt('กรอกรหัสผ่านผู้ดูแล:');
-  if(pin===ADMIN_PIN){ isAdmin=true; renderAdminBar(); loadMembers(); toast('เข้าสู่ระบบสำเร็จ'); }
-  else if(pin!==null) toast('รหัสผ่านไม่ถูกต้อง','error');
+  if(pin===ADMIN_PIN){
+    isAdmin=true;
+    localStorage.setItem('admin_wk','1');
+    renderAdminBar();
+    loadMembers();
+    toast('เข้าสู่ระบบสำเร็จ');
+  } else if(pin!==null) toast('รหัสผ่านไม่ถูกต้อง','error');
 }
 
 // ============================================================
