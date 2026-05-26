@@ -1046,30 +1046,42 @@ async function saveMember(){
     catch(e){ return toast('อัปโหลดรูปล้มเหลว','error'); }
   }
 
-  const payload={
+  const basePayload={
     name,
     role:document.getElementById('editMemberRole').value,
     phone:document.getElementById('editMemberPhone').value,
     village:type==='asom'?(parseInt(document.getElementById('editMemberVillage').value)||null):null,
     type,
-    photo_url,
-    birthdate,
-    position_order,
-    position_label
+    photo_url
   };
+  const fullPayload={...basePayload, birthdate, position_order, position_label};
 
   const btn=document.querySelector('#modalMemberEdit .btn-primary');
   if(btn){btn.disabled=true;btn.textContent='กำลังบันทึก...';}
   try{
-    let err;
+    let result;
+    let showSuccessToast=true;
+    // ลองบันทึกด้วย payload เต็ม (รวม birthdate/position_order/position_label)
     if(editingMemberId){
-      ({error:err}=await sb.from('members').update(payload).eq('id',editingMemberId));
+      result=await sb.from('members').update(fullPayload).eq('id',editingMemberId);
     } else {
-      ({error:err}=await sb.from('members').insert(payload));
+      result=await sb.from('members').insert(fullPayload);
     }
-    if(err) throw err;
+    // ถ้า error เพราะคอลัมน์ยังไม่มีใน Supabase ให้ fallback บันทึกแค่คอลัมน์พื้นฐาน
+    if(result.error && (result.error.message||'').toLowerCase().includes('column')){
+      if(editingMemberId){
+        result=await sb.from('members').update(basePayload).eq('id',editingMemberId);
+      } else {
+        result=await sb.from('members').insert(basePayload);
+      }
+      if(!result.error){
+        showSuccessToast=false;
+        toast('⚠️ บันทึกสำเร็จ (กรุณาเพิ่มคอลัมน์ birthdate, position_order, position_label ในตาราง members ของ Supabase)');
+      }
+    }
+    if(result.error) throw result.error;
     closeModal('modalMemberEdit');
-    toast(editingMemberId?'แก้ไขข้อมูลเรียบร้อย':'เพิ่มสมาชิกเรียบร้อย');
+    if(showSuccessToast) toast(editingMemberId?'แก้ไขข้อมูลเรียบร้อย':'เพิ่มสมาชิกเรียบร้อย');
     loadMembers();
   } catch(e){
     toast('เกิดข้อผิดพลาด: '+(e.message||'กรุณาลองใหม่'),'error');
