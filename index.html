@@ -1015,30 +1015,80 @@ function previewMemberPhoto(inp){
   document.getElementById('editMemberPhotoPreview').innerHTML=`<img src="${URL.createObjectURL(f)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:8px;display:block" />`;
 }
 
-async function saveMember(){
-  const prefix=document.getElementById('editMemberPrefix').value;
-  const first=document.getElementById('editMemberFirstName').value.trim();
-  const last=document.getElementById('editMemberLastName').value.trim();
-  if(!first)return toast('กรุณากรอกชื่อ','error');
-  const name = [prefix,first,last].filter(Boolean).join(' ');
-  const type = document.getElementById('editMemberType').value;
-  if(type==='asom' && !document.getElementById('editMemberVillage').value)
-    return toast('กรุณาเลือกหมู่','error');
-  // วันเกิด → ISO
-  let birthdate='';
-  const bd=parseInt(document.getElementById('editMemberBirthDay').value);
-  const bm=parseInt(document.getElementById('editMemberBirthMonth').value);
-  const by=parseInt(document.getElementById('editMemberBirthYear').value);
-  if(bd&&bm&&by){
-    const ce=by-543;
-    birthdate=`${ce}-${String(bm).padStart(2,'0')}-${String(bd).padStart(2,'0')}`;
+function renderMembers(){
+  const list = membersData.filter(m=>m.type===memberTab);
+  const el = document.getElementById('memberGrid');
+  if(list.length===0){
+    el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--gray-mid)"><div style="font-size:48px;margin-bottom:12px">${memberTab==='medical'?'👨‍⚕️':'🌿'}</div><p>ยังไม่มีข้อมูล</p></div>`;
+    return;
   }
-  let photo_url = editingMemberId ? (membersData.find(x=>x.id===editingMemberId)?.photo_url||'') : '';
-  if(memberPhotoFile){ toast('กำลังอัปโหลดรูป...'); photo_url=await uploadCloudinary(memberPhotoFile); memberPhotoFile=null; }
-  const payload={name,role:document.getElementById('editMemberRole').value,phone:document.getElementById('editMemberPhone').value,village:type==='asom'?(parseInt(document.getElementById('editMemberVillage').value)||null):null,type,photo_url,birthdate};
-  if(editingMemberId) await sb.from('members').update(payload).eq('id',editingMemberId);
-  else await sb.from('members').insert(payload);
-  closeModal('modalMemberEdit'); toast(editingMemberId?'แก้ไขเรียบร้อย':'เพิ่มสมาชิกเรียบร้อย'); loadMembers();
+  if(memberTab==='medical'){
+    // แสดงเรียงลำดับ order_num
+    const sorted = [...list].sort((a,b)=>(a.order_num||999)-(b.order_num||999));
+    el.innerHTML=`<div class="medical-list">${sorted.map((m,i)=>medicalCard(m,i+1)).join('')}</div>`;
+  } else {
+    // ผังองค์กรแยกหมู่
+    const VILLAGE_ORDER=[8,9,11,13,14,16];
+    const villages=[...new Set(list.map(m=>parseInt(m.village)).filter(Boolean))].sort((a,b)=>VILLAGE_ORDER.indexOf(a)-VILLAGE_ORDER.indexOf(b));
+    const TIERS=[
+      {order:1,label:'ประธาน อสม.',cls:'tier-1',badge:'badge-tier-1'},
+      {order:2,label:'รองประธาน อสม.',cls:'tier-2',badge:'badge-tier-2'},
+      {order:3,label:'เลขานุการ อสม.',cls:'tier-3',badge:'badge-tier-3'},
+      {order:4,label:'เหรัญญิก อสม.',cls:'tier-4',badge:'badge-tier-4'},
+      {order:5,label:'สมาชิก อสม.',cls:'tier-5',badge:'badge-tier-5'},
+    ];
+    el.innerHTML = villages.map(v=>{
+      const vMembers = list.filter(m=>parseInt(m.village)===v).sort((a,b)=>(a.position_order||5)-(b.position_order||5));
+      const tiersHtml = TIERS.map(t=>{
+        const members = vMembers.filter(m=>(m.position_order||5)===t.order);
+        if(members.length===0) return '';
+        return `<div class="org-tier">
+          <div class="org-tier-label">${t.label}</div>
+          <div class="org-row">${members.map(m=>orgCard(m,t)).join('')}</div>
+        </div>`;
+      }).join('');
+      return `<div class="org-village-block">
+        <div class="org-village-header">🏘️ หมู่ ${v} <span style="font-size:13px;color:var(--gray-mid);font-weight:400">(${vMembers.length} คน)</span></div>
+        ${tiersHtml}
+      </div>`;
+    }).join('');
+  }
+}
+
+function medicalCard(m, idx){
+  const img = m.photo_url
+    ? `<img src="${m.photo_url}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--green-light);margin:0 auto 8px;display:block" />`
+    : `<div style="width:64px;height:64px;border-radius:50%;background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 8px">👨‍⚕️</div>`;
+  const ageStr = m.birthdate ? (()=>{ const a=calcAge(m.birthdate); return `<div style="font-size:10px;color:var(--gray-mid)">${a.y} ปี</div>`; })() : '';
+  const editBtn = isAdmin ? `<div style="display:flex;gap:4px;justify-content:center;margin-top:8px">
+    <button class="btn-edit" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();openEditMember('${m.id}')">✏️</button>
+    <button class="btn-danger" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();deleteMember('${m.id}')">ลบ</button></div>` : '';
+  return `<div class="medical-card" style="position:relative" onclick="showMemberDetail('${m.id}')">
+    <div class="med-order">${idx}</div>
+    ${img}
+    <div style="font-weight:700;font-size:12px;color:var(--text-main);margin-bottom:2px">${m.name}</div>
+    <div style="font-size:11px;color:var(--gray-mid);margin-bottom:2px">${m.role||''}</div>
+    ${ageStr}
+    <div style="font-size:12px;color:var(--green-dark);font-weight:700">${m.phone||''}</div>
+    ${editBtn}</div>`;
+}
+
+function orgCard(m, tier){
+  const img = m.photo_url
+    ? `<img class="org-photo" src="${m.photo_url}" />`
+    : `<div class="org-photo">${'🌿'}</div>`;
+  const ageStr = m.birthdate ? (()=>{ const a=calcAge(m.birthdate); return `<div class="org-age">${a.y} ปี</div>`; })() : '';
+  const editBtn = isAdmin ? `<div style="display:flex;gap:4px;justify-content:center;margin-top:6px">
+    <button class="btn-edit" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();openEditMember('${m.id}')">✏️</button>
+    <button class="btn-danger" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();deleteMember('${m.id}')">ลบ</button></div>` : '';
+  return `<div class="org-card ${tier.cls}" onclick="showMemberDetail('${m.id}')">
+    <div class="org-pos-badge ${tier.badge}">${m.position_label||'สมาชิก'}</div>
+    ${img}
+    <div class="org-name">${m.name}</div>
+    ${m.role?`<div style="font-size:10px;color:var(--gray-mid);margin-bottom:2px">${m.role}</div>`:''}
+    ${ageStr}
+    <div class="org-phone">${m.phone||''}</div>
+    ${editBtn}</div>`;
 }
 
 async function deleteMember(id){
