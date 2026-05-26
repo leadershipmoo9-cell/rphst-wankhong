@@ -1046,13 +1046,17 @@ async function saveMember(){
     catch(e){ return toast('อัปโหลดรูปล้มเหลว','error'); }
   }
 
-  const basePayload={
+  // คอลัมน์ที่แน่ใจว่ามีอยู่ในตาราง members
+  const corePayload={
     name,
     role:document.getElementById('editMemberRole').value,
     phone:document.getElementById('editMemberPhone').value,
-    village:type==='asom'?(parseInt(document.getElementById('editMemberVillage').value)||null):null,
-    type,
     photo_url
+  };
+  // คอลัมน์เพิ่มเติมที่อาจมีหรือไม่มี (ต้องรัน ALTER TABLE ใน Supabase)
+  const basePayload={...corePayload,
+    village:type==='asom'?(parseInt(document.getElementById('editMemberVillage').value)||null):null,
+    type
   };
   const fullPayload={...basePayload, birthdate, position_order, position_label};
 
@@ -1067,16 +1071,18 @@ async function saveMember(){
     } else {
       result=await sb.from('members').insert(fullPayload);
     }
-    // ถ้า error เพราะคอลัมน์ยังไม่มีใน Supabase ให้ fallback บันทึกแค่คอลัมน์พื้นฐาน
-    if(result.error && (result.error.message||'').toLowerCase().includes('column')){
+    // fallback แบบลดหลั่น ถ้ามี column error
+    const fallbacks=[basePayload, corePayload];
+    for(const fb of fallbacks){
+      if(!result.error || !(result.error.message||'').toLowerCase().includes('column')) break;
       if(editingMemberId){
-        result=await sb.from('members').update(basePayload).eq('id',editingMemberId);
+        result=await sb.from('members').update(fb).eq('id',editingMemberId);
       } else {
-        result=await sb.from('members').insert(basePayload);
+        result=await sb.from('members').insert(fb);
       }
       if(!result.error){
         showSuccessToast=false;
-        toast('⚠️ บันทึกสำเร็จ (กรุณาเพิ่มคอลัมน์ birthdate, position_order, position_label ในตาราง members ของ Supabase)');
+        toast('⚠️ บันทึกสำเร็จ — กรุณารัน SQL ใน Supabase เพื่อเพิ่มคอลัมน์ที่ขาด (type, village, birthdate, position_order, position_label)');
       }
     }
     if(result.error) throw result.error;
