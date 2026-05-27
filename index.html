@@ -250,6 +250,7 @@
     <button class="nav-btn" onclick="showPage('dashboard',this)">📊 Dashboard</button>
     <button class="nav-btn" onclick="showPage('chat',this)">💬 ห้องแชท อสม.</button>
     <button class="nav-btn" onclick="showPage('contact',this)">📞 ติดต่อเรา</button>
+    <button class="nav-btn" onclick="showPage('population',this)">👥 จัดการประชากร</button>
     <button class="nav-btn" onclick="showPage('import',this)">📥 นำเข้าข้อมูล</button>
   </div>
 </nav>
@@ -534,6 +535,65 @@
         <div id="csvResultContent"></div>
         <button class="btn-outline" style="margin-top:12px" onclick="resetCsvImport()">📂 Import ไฟล์อื่น</button>
       </div>
+    </div>
+  </div>
+
+
+  <!-- ── จัดการข้อมูลประชากร ── -->
+  <div id="page-population" class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <h2 class="section-title">👥 จัดการข้อมูลประชากร</h2>
+        <p class="section-sub">ค้นหา เพิ่ม แก้ไข และลบรายชื่อประชากรในแต่ละหมู่บ้าน</p>
+      </div>
+      <button class="btn-primary" onclick="openAddPopModal()">➕ เพิ่มประชากร</button>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar" style="margin-bottom:14px">
+      <select id="filterPopVillage" onchange="loadPopulation()" style="padding:7px 10px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px">
+        <option value="">ทุกหมู่</option>
+        <option value="8">หมู่ 8</option>
+        <option value="9">หมู่ 9</option>
+        <option value="11">หมู่ 11</option>
+        <option value="13">หมู่ 13</option>
+        <option value="14">หมู่ 14</option>
+        <option value="16">หมู่ 16</option>
+      </select>
+      <input id="filterPopHouse" placeholder="บ้านเลขที่" oninput="filterPopTable()"
+        style="width:100px;padding:7px 10px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" />
+      <input id="filterPopName" placeholder="ค้นหาชื่อ-สกุล / เลขบัตร" oninput="filterPopTable()"
+        style="min-width:220px;padding:7px 10px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" />
+    </div>
+
+    <!-- Stats -->
+    <div id="popStats" style="margin-bottom:14px;font-size:13px;color:var(--gray-mid)"></div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>หมู่ที่</th>
+              <th>บ้านเลขที่</th>
+              <th>ชื่อ-สกุล</th>
+              <th>เพศ</th>
+              <th>วันเกิด (พ.ศ.)</th>
+              <th>อายุ</th>
+              <th>เลขบัตรประชาชน</th>
+              <th>เบอร์โทร</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="popTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Load more -->
+    <div style="text-align:center;margin-top:16px">
+      <button id="popLoadMoreBtn" class="btn-outline" onclick="loadPopulationMore()" style="display:none">โหลดเพิ่มเติม ⬇️</button>
     </div>
   </div>
 
@@ -950,6 +1010,7 @@ function showPage(id, btn) {
   if(id==='actorder') loadActOrderSelects();
   if(id==='news') loadNews();
   if(id==='health') { initHealthFilters(); loadHealth(); }
+  if(id==='population') loadPopulation();
   if(id==='dashboard') loadDashboard();
   if(id==='chat' && chatName) initChat();
 }
@@ -1946,6 +2007,145 @@ function chatBubbleHtml(m){ const isMe=m.sender_name===chatName; const t=new Dat
 async function sendChat(){ const txt=document.getElementById('chatInput').value.trim(); if(!txt||!chatName)return; document.getElementById('chatInput').value=''; await sb.from('chat_messages').insert({sender_name:chatName,content:txt}); }
 
 
+
+// ============================================================
+//  POPULATION MANAGEMENT (CRUD)
+// ============================================================
+let populationData = [];
+let popOffset = 0;
+const POP_PAGE_SIZE = 100;
+let editingPopId = null;
+
+async function loadPopulation(reset=true) {
+  if(reset){ popOffset=0; populationData=[]; }
+  const village = document.getElementById('filterPopVillage').value;
+  let q = sb.from('population').select('*');
+  if(village) q = q.eq('village', parseInt(village));
+  q = q.order('village',{ascending:true})
+        .order('house_number',{ascending:true})
+        .range(popOffset, popOffset + POP_PAGE_SIZE - 1);
+  const {data, error} = await q;
+  if(error){ toast('โหลดข้อมูลไม่สำเร็จ: '+error.message,'error'); return; }
+  populationData = reset ? (data||[]) : [...populationData, ...(data||[])];
+  popOffset += (data||[]).length;
+  document.getElementById('popLoadMoreBtn').style.display =
+    (data||[]).length === POP_PAGE_SIZE ? 'inline-block' : 'none';
+  filterPopTable();
+}
+
+async function loadPopulationMore() {
+  await loadPopulation(false);
+}
+
+function filterPopTable() {
+  const house = document.getElementById('filterPopHouse').value.trim().toLowerCase();
+  const name  = document.getElementById('filterPopName').value.trim().toLowerCase();
+  const list  = populationData.filter(p =>
+    (!house || (p.house_number||'').toLowerCase().startsWith(house)) &&
+    (!name  || (p.full_name||'').toLowerCase().includes(name) || (p.id_card||'').includes(name))
+  );
+  document.getElementById('popStats').textContent =
+    `แสดง ${list.length.toLocaleString()} รายการ (โหลดมา ${populationData.length.toLocaleString()} รายการ)`;
+  document.getElementById('popTable').innerHTML = list.length === 0
+    ? '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--gray-mid)">ไม่พบข้อมูล</td></tr>'
+    : list.map(p => {
+        const beCE = p.birthdate
+          ? new Date(p.birthdate).toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'})
+          : '-';
+        const ageStr = p.birthdate ? (()=>{const a=calcAge(p.birthdate); return a.y+'ปี '+a.m+'ด';})() : '-';
+        return `<tr>
+          <td style="font-weight:700;color:var(--green-dark)">${p.village||'-'}</td>
+          <td>${p.house_number||'-'}</td>
+          <td style="font-weight:600">${p.full_name||'-'}</td>
+          <td>${p.gender||'-'}</td>
+          <td>${beCE}</td>
+          <td>${ageStr}</td>
+          <td style="font-family:monospace;font-size:12px">${p.id_card||'-'}</td>
+          <td>${p.phone||'-'}</td>
+          <td style="white-space:nowrap">
+            <button class="btn-edit" onclick="openEditPop('${p.id}')">✏️</button>
+            <button class="btn-danger" style="margin-left:4px" onclick="deletePop('${p.id}')">ลบ</button>
+          </td>
+        </tr>`;
+      }).join('');
+}
+
+function openAddPopModal() {
+  editingPopId = null;
+  document.getElementById('popEditTitle').textContent = '➕ เพิ่มประชากร';
+  ['popVillage','popGender'].forEach(id=>document.getElementById(id).value='');
+  ['popHouseNo','popFullName','popBirthdate','popIdCard','popPhone'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('popAgeDisplay').style.display='none';
+  openModal('modalPopEdit');
+}
+
+function openEditPop(id) {
+  const p = populationData.find(x=>x.id===id); if(!p)return;
+  editingPopId = id;
+  document.getElementById('popEditTitle').textContent = '✏️ แก้ไขข้อมูลประชากร';
+  document.getElementById('popVillage').value = p.village||'';
+  document.getElementById('popHouseNo').value = p.house_number||'';
+  document.getElementById('popFullName').value = p.full_name||'';
+  document.getElementById('popGender').value = p.gender||'';
+  document.getElementById('popBirthdate').value = p.birthdate ? p.birthdate.substring(0,10) : '';
+  document.getElementById('popIdCard').value = p.id_card||'';
+  document.getElementById('popPhone').value = p.phone||'';
+  calcPopAge();
+  openModal('modalPopEdit');
+}
+
+function calcPopAge() {
+  const b = document.getElementById('popBirthdate').value;
+  const el = document.getElementById('popAgeDisplay');
+  if(!b){ el.style.display='none'; return; }
+  const a = calcAge(b);
+  const d = new Date(b);
+  const be = d.toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+  el.textContent = `วันเกิด ${be} — อายุ ${a.y} ปี ${a.m} เดือน ${a.d} วัน`;
+  el.style.display = 'block';
+}
+
+async function savePop() {
+  const full_name = document.getElementById('popFullName').value.trim();
+  const village   = parseInt(document.getElementById('popVillage').value)||null;
+  if(!full_name) return toast('กรุณากรอกชื่อ-สกุล','error');
+  if(!village)   return toast('กรุณาเลือกหมู่','error');
+  const payload = {
+    village,
+    house_number: document.getElementById('popHouseNo').value.trim()||null,
+    full_name,
+    gender:    document.getElementById('popGender').value||null,
+    birthdate: document.getElementById('popBirthdate').value||null,
+    id_card:   document.getElementById('popIdCard').value.trim()||null,
+    phone:     document.getElementById('popPhone').value.trim()||null,
+  };
+  const btn = document.querySelector('#modalPopEdit .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='กำลังบันทึก...';}
+  try {
+    let err;
+    if(editingPopId) {
+      ({error:err} = await sb.from('population').update(payload).eq('id',editingPopId));
+    } else {
+      ({error:err} = await sb.from('population').insert(payload));
+    }
+    if(err) throw err;
+    closeModal('modalPopEdit');
+    toast(editingPopId ? 'แก้ไขเรียบร้อย' : 'เพิ่มประชากรเรียบร้อย');
+    await loadPopulation();
+  } catch(e) {
+    toast('เกิดข้อผิดพลาด: '+(e.message||'กรุณาลองใหม่'),'error');
+  }
+  if(btn){btn.disabled=false;btn.textContent='💾 บันทึก';}
+}
+
+async function deletePop(id) {
+  if(!confirm('ลบรายชื่อประชากรนี้?')) return;
+  const {error} = await sb.from('population').delete().eq('id',id);
+  if(error) return toast('ลบไม่สำเร็จ: '+error.message,'error');
+  toast('ลบเรียบร้อย');
+  await loadPopulation();
+}
+
 // ============================================================
 //  CSV IMPORT — POPULATION
 // ============================================================
@@ -2152,5 +2352,59 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(o=>o.classList.remove('open')); });
 });
 </script>
+
+<!-- Population Edit Modal -->
+<div class="modal-overlay" id="modalPopEdit">
+  <div class="modal" style="max-width:560px">
+    <button class="modal-close" onclick="closeModal('modalPopEdit')">×</button>
+    <h2 id="popEditTitle">➕ เพิ่มประชากร</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>หมู่ที่ *</label>
+        <select id="popVillage">
+          <option value="">-- เลือกหมู่ --</option>
+          <option value="8">หมู่ 8</option><option value="9">หมู่ 9</option>
+          <option value="11">หมู่ 11</option><option value="13">หมู่ 13</option>
+          <option value="14">หมู่ 14</option><option value="16">หมู่ 16</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>บ้านเลขที่</label>
+        <input id="popHouseNo" placeholder="เช่น 1, 2/3" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>ชื่อ-สกุล * <span style="font-size:11px;color:var(--gray-mid)">(เช่น นายอลงกรณ์ ซิวสารี)</span></label>
+      <input id="popFullName" placeholder="คำนำหน้า ชื่อ นามสกุล" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>เพศ</label>
+        <select id="popGender">
+          <option value="">-- เลือก --</option>
+          <option value="ชาย">ชาย</option>
+          <option value="หญิง">หญิง</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>วันเกิด (ค.ศ.)</label>
+        <input type="date" id="popBirthdate" oninput="calcPopAge()" />
+      </div>
+    </div>
+    <div id="popAgeDisplay" style="display:none;background:var(--green-pale);border-radius:8px;padding:6px 12px;margin-bottom:12px;font-size:13px;font-weight:700;color:var(--green-dark)"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>เลขบัตรประชาชน</label>
+        <input id="popIdCard" placeholder="13 หลัก" maxlength="13" />
+      </div>
+      <div class="form-group">
+        <label>เบอร์โทร</label>
+        <input id="popPhone" placeholder="0XX-XXX-XXXX" />
+      </div>
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="savePop()">💾 บันทึก</button>
+  </div>
+</div>
+
 </body>
 </html>
