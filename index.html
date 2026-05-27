@@ -510,6 +510,11 @@
         </div>
       </div>
 
+      <div style="margin-bottom:12px">
+        <button id="btnTestConn" class="btn-outline" onclick="testImportConnection()">🔌 ทดสอบการเชื่อมต่อ Supabase ก่อน Import</button>
+        <div id="csvConnResult"></div>
+      </div>
+
       <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
         <button class="btn-primary" style="font-size:15px;padding:12px 28px" onclick="startCsvImport()">🚀 เริ่ม Import</button>
         <button class="btn-outline" onclick="resetCsvImport()">↩️ เลือกไฟล์ใหม่</button>
@@ -2265,16 +2270,83 @@ function renderCsvPreview(headers, rows) {
   ).join('');
 }
 
+async function testImportConnection() {
+  const btn = document.getElementById('btnTestConn');
+  if(btn){btn.disabled=true;btn.textContent='กำลังทดสอบ...';}
+  const testRow = {village:99,house_number:'TEST',full_name:'__TEST_DELETE_ME__',gender:'ชาย'};
+  const {data, error} = await sb.from('population').insert(testRow).select();
+  if(error){
+    document.getElementById('csvConnResult').innerHTML =
+      `<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:8px;padding:12px;margin-top:10px;font-size:13px">
+        ❌ <strong>เชื่อมต่อไม่สำเร็จ:</strong><br/>
+        <code style="color:#c62828;font-size:12px">${error.message}</code><br/><br/>
+        <strong>วิธีแก้:</strong> รัน SQL นี้ใน Supabase → SQL Editor:<br/>
+        <pre style="background:#f5f5f5;padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;margin-top:6px">CREATE TABLE IF NOT EXISTS public.population (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  village integer,
+  house_number text,
+  full_name text,
+  gender text,
+  birthdate date,
+  id_card text,
+  phone text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.population ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all" ON public.population FOR ALL USING (true) WITH CHECK (true);</pre>
+      </div>`;
+  } else {
+    // cleanup test row
+    if(data && data[0]) await sb.from('population').delete().eq('id', data[0].id);
+    document.getElementById('csvConnResult').innerHTML =
+      `<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:12px;margin-top:10px;font-size:13px">
+        ✅ <strong>เชื่อมต่อสำเร็จ!</strong> ตาราง population พร้อมใช้งาน
+      </div>`;
+  }
+  if(btn){btn.disabled=false;btn.textContent='🔌 ทดสอบการเชื่อมต่อ';}
+}
+
 async function startCsvImport() {
   if (!csvParsedRows.length) { toast('ไม่มีข้อมูลที่จะ import', 'error'); return; }
   document.getElementById('csvPreviewBox').style.display = 'none';
   document.getElementById('csvProgressBox').style.display = 'block';
   document.getElementById('csvResultBox').style.display = 'none';
   const batchSize = parseInt(document.getElementById('csvBatchSize').value) || 100;
+  const skipDup = document.getElementById('csvSkipDup').checked;
   const total = csvParsedRows.length;
-  let success = 0, skipped = 0, errors = 0;
-  const errorList = [];
-  for (let i = 0; i < total; i += batchSize) {
+  let success = 0, errors = 0;
+  const errorMsgs = [];
+
+  // Pre-flight: test with 1 row
+  const firstRow = csvParsedRows[0];
+  const {error: preErr} = await sb.from('population').insert(firstRow);
+  if(preErr) {
+    document.getElementById('csvProgressBox').style.display = 'none';
+    document.getElementById('csvResultBox').style.display = 'block';
+    document.getElementById('csvResultContent').innerHTML = `
+      <div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:10px;padding:16px">
+        <p style="font-size:15px;font-weight:700;color:#c62828;margin-bottom:10px">❌ Import ไม่สำเร็จ — พบข้อผิดพลาดก่อน import</p>
+        <p style="font-size:13px;margin-bottom:10px"><strong>สาเหตุ:</strong> <code style="color:#c62828">${preErr.message}</code></p>
+        <p style="font-size:13px;margin-bottom:10px"><strong>วิธีแก้ที่แนะนำ:</strong> กด <em>"🔌 ทดสอบการเชื่อมต่อ"</em> เพื่อตรวจสอบ และรัน SQL สร้างตารางใน Supabase</p>
+        <pre style="background:#f5f5f5;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto">CREATE TABLE IF NOT EXISTS public.population (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  village integer,
+  house_number text,
+  full_name text,
+  gender text,
+  birthdate date,
+  id_card text,
+  phone text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.population ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all" ON public.population FOR ALL USING (true) WITH CHECK (true);</pre>
+      </div>`;
+    return;
+  }
+  success = 1;
+
+  for (let i = 1; i < total; i += batchSize) {
     const batch = csvParsedRows.slice(i, i + batchSize);
     const pct = Math.round((i / total) * 100);
     document.getElementById('csvProgressBar').style.width = pct + '%';
@@ -2282,27 +2354,29 @@ async function startCsvImport() {
     document.getElementById('csvProgressStatus').textContent =
       `กำลัง import แถว ${i+1}–${Math.min(i+batchSize, total)} จาก ${total.toLocaleString()}`;
     document.getElementById('csvProgressDetail').textContent =
-      `✅ ${success} สำเร็จ  ⏭️ ${skipped} ข้าม  ❌ ${errors} ผิดพลาด`;
-    try {
-      const { error } = await sb.from('population').upsert(batch, {
-        onConflict: 'id_card',
-        ignoreDuplicates: document.getElementById('csvSkipDup').checked
-      });
-      if (error) {
-        // fallback: insert without upsert
-        const { error: e2 } = await sb.from('population').insert(batch);
-        if (e2) { errors += batch.length; errorList.push(e2.message); }
-        else success += batch.length;
+      `✅ ${success} สำเร็จ  ❌ ${errors} ผิดพลาด`;
+
+    const {error} = await sb.from('population').insert(batch);
+    if(error) {
+      if(skipDup && error.message.includes('duplicate')) {
+        // insert one-by-one to skip duplicates
+        for(const row of batch) {
+          const {error: e2} = await sb.from('population').insert(row);
+          if(e2){
+            if(e2.message.includes('duplicate')) { /* skip silently */ }
+            else { errors++; if(errorMsgs.length<5) errorMsgs.push(e2.message); }
+          } else success++;
+        }
       } else {
-        success += batch.length;
+        errors += batch.length;
+        if(errorMsgs.length < 5) errorMsgs.push(`แถว ${i+1}: ${error.message}`);
       }
-    } catch(e) {
-      errors += batch.length;
-      errorList.push(e.message);
+    } else {
+      success += batch.length;
     }
-    await new Promise(r => setTimeout(r, 80)); // small delay
+    await new Promise(r => setTimeout(r, 60));
   }
-  // Done
+
   document.getElementById('csvProgressBar').style.width = '100%';
   document.getElementById('csvProgressPct').textContent = '100%';
   document.getElementById('csvProgressStatus').textContent = 'เสร็จแล้ว!';
@@ -2313,16 +2387,13 @@ async function startCsvImport() {
       <div class="sum-card" style="border-top-color:#2e7d32">
         <h3>Import สำเร็จ</h3><div class="sum-num" style="color:#2e7d32">${success.toLocaleString()}</div><div class="sum-unit">แถว</div>
       </div>
-      <div class="sum-card" style="border-top-color:var(--gold)">
-        <h3>ข้ามซ้ำ</h3><div class="sum-num" style="color:var(--gold)">${skipped}</div><div class="sum-unit">แถว</div>
-      </div>
       <div class="sum-card" style="border-top-color:#c62828">
         <h3>ผิดพลาด</h3><div class="sum-num" style="color:#c62828">${errors}</div><div class="sum-unit">แถว</div>
       </div>
     </div>
-    ${errorList.length ? `<details style="font-size:12px;color:#c62828"><summary>รายละเอียดข้อผิดพลาด (${errorList.length})</summary><pre style="background:#fff5f5;padding:10px;border-radius:6px;margin-top:6px;overflow-x:auto">${errorList.slice(0,5).join('\n')}</pre></details>` : ''}
-    <p style="font-size:13px;color:var(--gray-mid);margin-top:8px">นำเข้าข้อมูล ${total.toLocaleString()} รายการ จากไฟล์ CSV เรียบร้อยแล้ว</p>`;
-  toast(`Import เสร็จ! ${success} รายการสำเร็จ`);
+    ${errorMsgs.length ? `<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:8px;padding:12px;font-size:12px;margin-bottom:10px"><strong style="color:#c62828">ข้อผิดพลาด:</strong><pre style="margin-top:6px;color:#c62828;overflow-x:auto">${errorMsgs.join('\n')}</pre></div>` : ''}
+    <p style="font-size:13px;color:var(--gray-mid)">นำเข้าข้อมูล ${total.toLocaleString()} รายการเรียบร้อยแล้ว</p>`;
+  toast(errors===0 ? `✅ Import สำเร็จ ${success} รายการ` : `Import เสร็จ: ${success} สำเร็จ, ${errors} ผิดพลาด`, errors>0?'error':'success');
 }
 
 function resetCsvImport() {
