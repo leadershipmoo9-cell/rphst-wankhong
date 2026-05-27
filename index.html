@@ -372,7 +372,7 @@
     </div>
     <div class="summary-grid" id="healthStats"></div>
     <div class="table-wrap"><div class="table-scroll"><table>
-      <thead><tr><th>ปี</th><th>เดือน</th><th>วัน/เวลา</th><th>อสม.ผู้คัดกรอง</th><th>หมู่</th><th>ชื่อ-สกุล</th><th>วันเกิด</th><th>อายุ</th><th>เลขบัตร</th><th>เบอร์โทร</th><th>น้ำหนัก</th><th>ส่วนสูง</th><th>BMI</th><th>รอบเอว</th><th>การศึกษา</th><th>อาชีพ</th><th>สถานภาพ</th><th>ความดัน1 (SYS/DIA/ชีพจร)</th><th>ความดัน2 (SYS/DIA/ชีพจร)</th><th>ความดัน3 (SYS/DIA/ชีพจร)</th><th>ค่าความดันเฉลี่ย</th><th>กลุ่มความดัน</th><th>น้ำตาล</th><th>ค่าน้ำตาล</th><th>กลุ่มน้ำตาล</th><th>สูบบุหรี่</th><th>มวน/วัน</th><th>ชนิดบุหรี่</th><th>ระยะเวลาสูบ</th><th>แอลกอฮอล์</th><th>วัน/สัปดาห์</th><th>ภาวะซึมเศร้า</th><th></th></tr></thead>
+      <thead><tr><th>ปี</th><th>เดือน</th><th>วัน/เวลา</th><th>อสม.ผู้คัดกรอง</th><th>หมู่</th><th>ชื่อ-สกุล</th><th>เพศ</th><th>วันเกิด (พ.ศ.)</th><th>อายุ</th><th>เลขบัตร</th><th>เบอร์โทร</th><th>น้ำหนัก</th><th>ส่วนสูง</th><th>BMI</th><th>รอบเอว</th><th>การศึกษา</th><th>อาชีพ</th><th>สถานภาพ</th><th>ความดัน1 (SYS/DIA/ชีพจร)</th><th>ความดัน2 (SYS/DIA/ชีพจร)</th><th>ความดัน3 (SYS/DIA/ชีพจร)</th><th>ค่าความดันเฉลี่ย</th><th>กลุ่มความดัน</th><th>น้ำตาล</th><th>ค่าน้ำตาล</th><th>กลุ่มน้ำตาล</th><th>สูบบุหรี่</th><th>มวน/วัน</th><th>ชนิดบุหรี่</th><th>ระยะเวลาสูบ</th><th>แอลกอฮอล์</th><th>วัน/สัปดาห์</th><th>ภาวะซึมเศร้า</th><th></th></tr></thead>
       <tbody id="healthTable"></tbody>
     </table></div></div>
   </div>
@@ -612,22 +612,54 @@
 
     <div class="health-section">
       <div class="health-section-title">👤 ข้อมูลประชากร</div>
-      <!-- ชื่อแยกช่อง -->
+
+      <!-- ── ค้นหาจากฐานข้อมูลประชากร ── -->
+      <div style="background:var(--green-pale);border-radius:10px;padding:14px 16px;margin-bottom:16px;border:1.5px dashed var(--green-light)">
+        <div style="font-family:'Kanit',sans-serif;font-size:13px;font-weight:600;color:var(--green-dark);margin-bottom:10px">🔍 ค้นหาจากฐานข้อมูลประชากร <span style="font-family:'Sarabun',sans-serif;font-size:11px;color:var(--gray-mid);font-weight:400">(เลือกแล้วระบบจะกรอกข้อมูลให้อัตโนมัติ)</span></div>
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-group">
+            <label>หมู่บ้าน</label>
+            <select id="hPopVillage" onchange="onPopVillageChange()">
+              <option value="">-- เลือกหมู่ --</option>
+              <option value="8">หมู่ 8</option>
+              <option value="9">หมู่ 9</option>
+              <option value="11">หมู่ 11</option>
+              <option value="13">หมู่ 13</option>
+              <option value="14">หมู่ 14</option>
+              <option value="16">หมู่ 16</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>บ้านเลขที่</label>
+            <input id="hPopHouseNo" placeholder="เช่น 1, 2/3..." oninput="onPopHouseNoInput()" />
+          </div>
+          <div class="form-group">
+            <label>ค้นหาชื่อ-สกุล</label>
+            <input id="hPopName" placeholder="พิมพ์ชื่อหรือนามสกุล..." oninput="onPopNameInput()" />
+          </div>
+        </div>
+        <div id="hPopResults" style="display:none;border:1.5px solid var(--green-light);border-radius:8px;overflow:hidden;max-height:260px;overflow-y:auto;background:white"></div>
+        <div id="hPopSelected" style="display:none;background:white;border:1.5px solid var(--green-mid);border-radius:8px;padding:8px 12px;margin-top:8px;font-size:13px;color:var(--green-dark);font-weight:600"></div>
+      </div>
+
+      <!-- ── ชื่อ-สกุล รวมช่อง ── -->
       <div class="form-row">
+        <div class="form-group" style="flex:2;min-width:220px">
+          <label>ชื่อ-สกุล * <span style="font-weight:400;color:var(--gray-mid);font-size:11px">(เช่น นายอลงกรณ์ ซิวสารี)</span></label>
+          <input id="hFullName" placeholder="คำนำหน้า ชื่อ นามสกุล" />
+        </div>
         <div class="form-group">
-          <label>คำนำหน้า *</label>
-          <select id="hPrefix">
+          <label>เพศ</label>
+          <select id="hGender">
             <option value="">-- เลือก --</option>
-            <option>นาย</option><option>นาง</option><option>นางสาว</option>
-            <option>เด็กชาย</option><option>เด็กหญิง</option>
-            <option>ดร.</option><option>นพ.</option><option>พญ.</option>
+            <option value="ชาย">ชาย</option>
+            <option value="หญิง">หญิง</option>
           </select>
         </div>
-        <div class="form-group"><label>ชื่อ *</label><input id="hFirstName" placeholder="ชื่อ" /></div>
-        <div class="form-group"><label>นามสกุล *</label><input id="hLastName" placeholder="นามสกุล" /></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>วันเกิด</label><input type="date" id="hBirth" oninput="calcAgeAuto()" /></div>
+        <div class="form-group"><label>วันเกิด (ค.ศ.)</label><input type="date" id="hBirth" oninput="calcAgeAuto()" /></div>
+        <div class="form-group"><label>วันเกิด (พ.ศ.) — อัตโนมัติ</label><input id="hBirthBE" readonly style="background:#f5f7f6" placeholder="จะแสดงอัตโนมัติ" /></div>
       </div>
       <div id="hAgeDisplay" style="display:none;background:var(--green-pale);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:14px;font-weight:700;color:var(--green-dark)"></div>
       <div class="form-row">
@@ -1358,6 +1390,94 @@ async function saveNews(){
 async function deleteNews(id){ if(!confirm('ลบข่าวสารนี้?'))return; await sb.from('activity_posts').delete().eq('id',id); toast('ลบเรียบร้อย'); loadNews(); }
 
 // ============================================================
+//  POPULATION LOOKUP
+// ============================================================
+let popSearchTimer = null;
+
+function onPopVillageChange(){
+  document.getElementById('hPopHouseNo').value='';
+  document.getElementById('hPopName').value='';
+  document.getElementById('hPopResults').style.display='none';
+  document.getElementById('hPopResults').innerHTML='';
+  // sync hVillage (ข้อมูลการคัดกรอง)
+  const v = document.getElementById('hPopVillage').value;
+  if(v){ document.getElementById('hVillage').value=v; updateScreenerByVillage(); }
+}
+
+function onPopHouseNoInput(){
+  clearTimeout(popSearchTimer);
+  popSearchTimer = setTimeout(()=>doPopSearch(), 500);
+}
+
+function onPopNameInput(){
+  clearTimeout(popSearchTimer);
+  popSearchTimer = setTimeout(()=>doPopSearch(), 400);
+}
+
+async function doPopSearch(){
+  const village = document.getElementById('hPopVillage').value;
+  const houseNo = document.getElementById('hPopHouseNo').value.trim();
+  const name    = document.getElementById('hPopName').value.trim();
+  if(!village && !houseNo && name.length < 2){ 
+    document.getElementById('hPopResults').style.display='none'; return; 
+  }
+  let q = sb.from('population').select('*');
+  if(village) q = q.eq('village', parseInt(village));
+  if(houseNo) q = q.ilike('house_number', houseNo+'%');
+  if(name)    q = q.ilike('full_name', `%${name}%`);
+  q = q.order('house_number', {ascending:true}).limit(30);
+  const {data, error} = await q;
+  renderPopResults(data||[], error);
+}
+
+function renderPopResults(list, error){
+  const el = document.getElementById('hPopResults');
+  if(error){ el.innerHTML='<div style="padding:12px;color:#c62828;font-size:13px">เกิดข้อผิดพลาด: '+error.message+'</div>'; el.style.display='block'; return; }
+  if(list.length===0){ el.innerHTML='<div style="padding:12px;color:var(--gray-mid);font-size:13px;text-align:center">ไม่พบข้อมูล</div>'; el.style.display='block'; return; }
+  el.innerHTML = list.map(p=>{
+    const beCE = p.birthdate ? new Date(p.birthdate).toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'}) : '-';
+    return `<div onclick="selectPopulation(${JSON.stringify(p).replace(/"/g,'&quot;')})"
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--green-pale);font-size:13px;display:grid;grid-template-columns:60px 1fr 1fr 90px;gap:6px;align-items:center"
+      onmouseover="this.style.background='var(--green-pale)'" onmouseout="this.style.background='white'">
+      <span style="font-weight:700;color:var(--green-dark)">บ้าน ${p.house_number||'-'}</span>
+      <span style="font-weight:600">${p.full_name||((p.prefix||'')+' '+(p.first_name||'')+' '+(p.last_name||''))}</span>
+      <span style="color:var(--gray-mid)">${p.id_card||'-'}</span>
+      <span style="color:var(--gray-mid)">${beCE}</span>
+    </div>`;
+  }).join('');
+  el.style.display = 'block';
+}
+
+function selectPopulation(p){
+  if(typeof p === 'string') p = JSON.parse(p);
+  // Fill screener section village
+  if(p.village){
+    document.getElementById('hVillage').value = p.village;
+    updateScreenerByVillage();
+    document.getElementById('hPopVillage').value = p.village;
+  }
+  // Fill name field (combined)
+  const combinedName = [p.full_name, p.prefix, p.first_name, p.last_name].filter(Boolean);
+  // prefer full_name if available, else combine prefix+first+last
+  document.getElementById('hFullName').value = p.full_name || [p.prefix,p.first_name,p.last_name].filter(Boolean).join(' ');
+  document.getElementById('hGender').value = p.gender||'';
+  // Fill birth (CE date for input, BE display)
+  if(p.birthdate){
+    document.getElementById('hBirth').value = p.birthdate.substring(0,10);
+    calcAgeAuto();
+  }
+  document.getElementById('hIdCard').value = p.id_card||'';
+  document.getElementById('hPhone').value = p.phone||'';
+  document.getElementById('hAddress').value = p.house_number ? 'บ้านเลขที่ '+p.house_number : '';
+  // Show selected badge
+  const badge = document.getElementById('hPopSelected');
+  badge.innerHTML = '✅ เลือกแล้ว: <strong>'+(p.full_name||(p.prefix||'')+' '+(p.first_name||'')+' '+(p.last_name||''))+'</strong> บ้านเลขที่ '+(p.house_number||'-');
+  badge.style.display = 'block';
+  document.getElementById('hPopResults').style.display = 'none';
+  toast('ดึงข้อมูลประชากรเรียบร้อย');
+}
+
+// ============================================================
 //  HEALTH SCREENING
 // ============================================================
 function updateScreenerByVillage(){
@@ -1427,7 +1547,9 @@ function renderHealthTable(){
           <td>${r.year}</td><td>${MONTHS_TH[(r.month||1)-1]}</td>
           <td>${r.screen_date||''} ${r.screen_time||''}</td>
           <td>${r.screener_name||''}</td><td>${r.village||''}</td><td>${r.full_name}</td>
-          <td>${r.birthdate||''}</td><td>${r.age_years||0}ปี ${r.age_months||0}ด</td>
+          <td>${r.gender||'-'}</td>
+          <td>${r.birthdate?new Date(r.birthdate).toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'}):'-'}</td>
+          <td>${r.age_years||0}ปี ${r.age_months||0}ด</td>
           <td>${r.id_card||''}</td><td>${r.phone||''}</td>
           <td>${r.weight||0} กก.</td><td>${r.height||0} ซม.</td>
           <td><span class="bmi-badge ${bc.cls}">${r.bmi||0} (${r.bmi_category||''})</span></td>
@@ -1463,15 +1585,21 @@ function openHealthForm(){
   document.getElementById('hYear').value=now.getFullYear()+543;
   document.getElementById('hMonth').value=now.getMonth()+1;
   // clear patient name fields
-  ['hPrefix','hScreener','hEdu','hOccupy','hMarital','hSmoke','hAlcohol','hDepression'].forEach(id=>{
+  ['hScreener','hEdu','hOccupy','hMarital','hSmoke','hAlcohol','hDepression'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('hSmoke').value='ไม่สูบ';
   document.getElementById('hAlcohol').value='ไม่ดื่ม';
-  ['hFirstName','hLastName','hBirth','hIdCard','hPhone','hAddress','hSmokeQty','hSmokeType','hSmokeDur','hAlcoholQty'].forEach(id=>{
+  ['hFullName','hBirth','hIdCard','hPhone','hAddress','hSmokeQty','hSmokeType','hSmokeDur','hAlcoholQty'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('hVillage').value='';
+  // clear population search
+  ['hPopVillage','hPopHouseNo','hPopName'].forEach(id=>{ const e=document.getElementById(id); if(e)e.value=''; });
+  const pr=document.getElementById('hPopResults'); if(pr){pr.style.display='none';pr.innerHTML='';}
+  const ps=document.getElementById('hPopSelected'); if(ps){ps.style.display='none';ps.innerHTML='';}
+  const bb=document.getElementById('hBirthBE'); if(bb)bb.value='';
+  const hg=document.getElementById('hGender'); if(hg)hg.value='';
   document.getElementById('hBmiDisplay').value='';
   document.getElementById('hBpResult').innerHTML='';
   document.getElementById('hSugarResult').innerHTML='';
@@ -1489,16 +1617,7 @@ async function openEditHealth(id){
   const r=healthData.find(x=>x.id===id); if(!r)return;
   editingHealthId=id;
   openHealthForm();
-  // parse name back to prefix/first/last
-  const prefixes=['นาย','นาง','นางสาว','เด็กชาย','เด็กหญิง','ดร.','นพ.','พญ.'];
-  let prefix='', firstName='', lastName='', fullName=r.full_name||'';
-  const fp=prefixes.find(p=>fullName.startsWith(p));
-  if(fp){ prefix=fp; fullName=fullName.slice(fp.length).trim(); }
-  const parts=fullName.split(' ');
-  firstName=parts[0]||''; lastName=parts.slice(1).join(' ')||'';
-  document.getElementById('hPrefix').value=prefix;
-  document.getElementById('hFirstName').value=firstName;
-  document.getElementById('hLastName').value=lastName;
+  document.getElementById('hFullName').value=r.full_name||'';
   document.getElementById('hIdCard').value=r.id_card||'';
   document.getElementById('hPhone').value=r.phone||'';
   document.getElementById('hOccupy').value=r.occupation||'';
@@ -1511,6 +1630,7 @@ async function openEditHealth(id){
   document.getElementById('hTime').value=r.screen_time||'';
   document.getElementById('hScreener').value=r.screener_name||'';
   document.getElementById('hBirth').value=r.birthdate||'';
+  const hg2=document.getElementById('hGender'); if(hg2)hg2.value=r.gender||'';
   if(r.birthdate) calcAgeAuto();
   document.getElementById('hEdu').value=r.education||'';
   document.getElementById('hMarital').value=r.marital_status||'';
@@ -1547,6 +1667,12 @@ function calcAgeAuto(){
   const el=document.getElementById('hAgeDisplay');
   el.textContent=`อายุ ${a.y} ปี ${a.m} เดือน ${a.d} วัน`;
   el.style.display='block';
+  // แปลงวันเกิด ค.ศ. → พ.ศ.
+  const beEl=document.getElementById('hBirthBE');
+  if(beEl){
+    const d=new Date(b);
+    beEl.value=d.toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+  }
 }
 
 function calcBmiAuto(){
@@ -1584,11 +1710,8 @@ function toggleSmokeFields(){ document.getElementById('hSmokeFields').style.disp
 function toggleAlcoholFields(){ document.getElementById('hAlcoholFields').style.display=document.getElementById('hAlcohol').value==='ไม่ดื่ม'?'none':'block'; }
 
 async function saveHealth(){
-  const prefix=document.getElementById('hPrefix').value;
-  const firstName=document.getElementById('hFirstName').value.trim();
-  const lastName=document.getElementById('hLastName').value.trim();
-  if(!firstName) return toast('กรุณากรอกชื่อ','error');
-  const full_name=[prefix,firstName,lastName].filter(Boolean).join(' ');
+  const full_name=document.getElementById('hFullName').value.trim();
+  if(!full_name) return toast('กรุณากรอกชื่อ-สกุล','error');
   const screener=document.getElementById('hScreener').value;
   if(!screener) return toast('กรุณาเลือก อสม.ผู้คัดกรอง','error');
   const w=parseFloat(document.getElementById('hWeight').value)||0, h=parseFloat(document.getElementById('hHeight').value)||0;
@@ -1619,6 +1742,7 @@ async function saveHealth(){
     screen_date:document.getElementById('hDate').value,
     screen_time:document.getElementById('hTime').value,
     screener_name:screener,
+    gender:(document.getElementById('hGender')?.value||''),
     village:parseInt(document.getElementById('hVillage').value)||null,
     address:document.getElementById('hAddress').value,
     full_name,
