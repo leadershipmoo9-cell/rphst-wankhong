@@ -250,6 +250,7 @@
     <button class="nav-btn" onclick="showPage('dashboard',this)">📊 Dashboard</button>
     <button class="nav-btn" onclick="showPage('chat',this)">💬 ห้องแชท อสม.</button>
     <button class="nav-btn" onclick="showPage('contact',this)">📞 ติดต่อเรา</button>
+    <button class="nav-btn" onclick="showPage('import',this)">📥 นำเข้าข้อมูล</button>
   </div>
 </nav>
 
@@ -448,6 +449,94 @@
       </div>
     </div>
   </div>
+
+  <!-- ── นำเข้าข้อมูลประชากร ── -->
+  <div id="page-import" class="page">
+    <h2 class="section-title">📥 นำเข้าข้อมูลประชากร</h2>
+    <p class="section-sub">นำเข้าข้อมูลประชากรจากไฟล์ CSV เข้า Supabase โดยตรง (รองรับไฟล์ใหญ่ได้)</p>
+
+    <div class="section-box" style="margin-bottom:16px">
+      <div class="section-box-title">📋 หัวคอลัมน์ที่รองรับ</div>
+      <div style="background:var(--green-pale);border-radius:8px;padding:12px 14px;font-size:13px;font-family:monospace;margin-bottom:12px;line-height:2">
+        village, house_number, full_name, gender, id_card, <b>birthdate</b>, phone
+      </div>
+      <p style="font-size:12px;color:var(--gray-mid)">
+        ⚠️ ชื่อคอลัมน์ต้องตรงตามนี้ (ตัวพิมพ์เล็ก) — ระบบรองรับคอลัมน์พิเศษ เช่น <code>rthdate</code> หรือ <code>birth_date</code> จะแปลงให้อัตโนมัติ
+      </p>
+    </div>
+
+    <div class="section-box" style="margin-bottom:16px">
+      <div class="section-box-title">📂 เลือกไฟล์ CSV</div>
+      <input type="file" id="csvFileInput" accept=".csv,.txt" style="display:none" onchange="handleCsvFile(this)" />
+      <div id="csvDropZone" onclick="document.getElementById('csvFileInput').click()"
+        style="border:2px dashed var(--green-light);border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:.2s"
+        ondragover="event.preventDefault();this.style.background='var(--green-pale)'"
+        ondragleave="this.style.background=''"
+        ondrop="event.preventDefault();this.style.background='';handleCsvFile({files:event.dataTransfer.files})">
+        <div style="font-size:48px;margin-bottom:8px">📄</div>
+        <div style="font-size:15px;font-weight:600;color:var(--green-dark);margin-bottom:4px">คลิกหรือลากไฟล์ CSV มาวางที่นี่</div>
+        <div style="font-size:12px;color:var(--gray-mid)">รองรับ .csv และ .txt (UTF-8)</div>
+      </div>
+    </div>
+
+    <div id="csvPreviewBox" style="display:none">
+      <div class="section-box" style="margin-bottom:16px">
+        <div class="section-box-title" id="csvPreviewTitle">👁️ ตัวอย่างข้อมูล</div>
+        <div id="csvColumnMap" style="margin-bottom:12px"></div>
+        <div style="overflow-x:auto;max-height:280px;overflow-y:auto;border:1px solid #eef2ef;border-radius:8px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead id="csvPreviewHead"></thead>
+            <tbody id="csvPreviewBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section-box" style="margin-bottom:16px">
+        <div class="section-box-title">⚙️ ตัวเลือก</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="csvSkipDup" checked style="width:16px;height:16px;accent-color:var(--green-mid)" />
+            ข้ามแถวที่มีเลขบัตรซ้ำในฐานข้อมูลแล้ว
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+            ขนาด Batch:
+            <select id="csvBatchSize" style="padding:4px 8px;border:1.5px solid #dde8e1;border-radius:6px;font-size:13px">
+              <option value="50">50 แถว/ครั้ง</option>
+              <option value="100" selected>100 แถว/ครั้ง</option>
+              <option value="200">200 แถว/ครั้ง</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn-primary" style="font-size:15px;padding:12px 28px" onclick="startCsvImport()">🚀 เริ่ม Import</button>
+        <button class="btn-outline" onclick="resetCsvImport()">↩️ เลือกไฟล์ใหม่</button>
+      </div>
+    </div>
+
+    <div id="csvProgressBox" style="display:none">
+      <div class="section-box">
+        <div class="section-box-title">⏳ กำลัง Import...</div>
+        <div style="background:#eef2ef;border-radius:99px;height:20px;margin-bottom:12px;overflow:hidden">
+          <div id="csvProgressBar" style="background:var(--green-mid);height:100%;width:0%;transition:.3s;border-radius:99px;display:flex;align-items:center;justify-content:center">
+            <span id="csvProgressPct" style="font-size:11px;font-weight:700;color:white;padding:0 8px">0%</span>
+          </div>
+        </div>
+        <div id="csvProgressStatus" style="font-size:13px;color:var(--text-sub)">กำลังเริ่มต้น...</div>
+        <div id="csvProgressDetail" style="margin-top:8px;font-size:12px;color:var(--gray-mid)"></div>
+      </div>
+    </div>
+
+    <div id="csvResultBox" style="display:none">
+      <div class="section-box">
+        <div class="section-box-title">✅ ผลการ Import</div>
+        <div id="csvResultContent"></div>
+        <button class="btn-outline" style="margin-top:12px" onclick="resetCsvImport()">📂 Import ไฟล์อื่น</button>
+      </div>
+    </div>
+  </div>
+
 
 </main>
 
@@ -1855,6 +1944,195 @@ function chatBubbleHtml(m){ const isMe=m.sender_name===chatName; const t=new Dat
       <div class="chat-time">${t}</div>
     </div></div>`; }
 async function sendChat(){ const txt=document.getElementById('chatInput').value.trim(); if(!txt||!chatName)return; document.getElementById('chatInput').value=''; await sb.from('chat_messages').insert({sender_name:chatName,content:txt}); }
+
+
+// ============================================================
+//  CSV IMPORT — POPULATION
+// ============================================================
+let csvParsedRows = [];
+let csvHeaders = [];
+
+// Column name aliases → canonical name
+const COL_ALIASES = {
+  'village': 'village',
+  'moo': 'village', 'หมู่': 'village', 'หมู่ที่': 'village',
+  'house_number': 'house_number', 'houseno': 'house_number',
+  'บ้านเลขที่': 'house_number', 'บ้านเลข': 'house_number',
+  'full_name': 'full_name', 'name': 'full_name', 'fullname': 'full_name',
+  'ชื่อสกุล': 'full_name', 'ชื่อ-สกุล': 'full_name', 'ชื่อ': 'full_name',
+  'gender': 'gender', 'เพศ': 'gender', 'sex': 'gender',
+  'id_card': 'id_card', 'idcard': 'id_card', 'cid': 'id_card',
+  'เลขบัตร': 'id_card', 'เลขประชาชน': 'id_card', 'บัตรประชาชน': 'id_card',
+  'birthdate': 'birthdate', 'birth_date': 'birthdate', 'rthdate': 'birthdate',
+  'dob': 'birthdate', 'วันเกิด': 'birthdate', 'วันเดือนปีเกิด': 'birthdate',
+  'phone': 'phone', 'tel': 'phone', 'mobile': 'phone',
+  'เบอร์โทร': 'phone', 'โทรศัพท์': 'phone', 'เบอร์': 'phone',
+};
+
+function parseCsvText(text) {
+  // Remove BOM
+  text = text.replace(/^﻿/, '');
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return { headers: [], rows: [] };
+  const sep = lines[0].includes('\t') ? '\t' : ',';
+  const parseRow = line => {
+    const cells = []; let cur = ''; let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; continue; }
+      if (c === sep && !inQ) { cells.push(cur.trim()); cur = ''; continue; }
+      cur += c;
+    }
+    cells.push(cur.trim()); return cells;
+  };
+  const rawHeaders = parseRow(lines[0]).map(h => h.toLowerCase().trim().replace(/\s+/g,'_'));
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = parseRow(lines[i]);
+    const row = {};
+    rawHeaders.forEach((h, idx) => { row[h] = cells[idx] !== undefined ? cells[idx] : ''; });
+    rows.push(row);
+  }
+  return { headers: rawHeaders, rows };
+}
+
+function mapRow(rawRow) {
+  const out = {};
+  Object.entries(rawRow).forEach(([k, v]) => {
+    const canon = COL_ALIASES[k] || COL_ALIASES[k.replace(/_/g,' ')] || null;
+    if (canon && v !== undefined && v !== '') out[canon] = v;
+  });
+  // Parse village as int
+  if (out.village) out.village = parseInt(out.village) || null;
+  // Parse birthdate — handle BE (> 2400) → CE
+  if (out.birthdate) {
+    let bd = out.birthdate.trim();
+    // Try formats: YYYY-MM-DD, DD/MM/YYYY, D/M/YYYY
+    let parts;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(bd)) {
+      let yr = parseInt(bd.substring(0,4));
+      if (yr > 2400) bd = (yr-543)+bd.substring(4);
+      out.birthdate = bd;
+    } else if (/\//.test(bd)) {
+      parts = bd.split('/');
+      if (parts.length === 3) {
+        let [d, m, y] = parts.map(Number);
+        if (y > 2400) y -= 543;
+        out.birthdate = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      }
+    } else {
+      out.birthdate = null;
+    }
+  }
+  return out;
+}
+
+function handleCsvFile(input) {
+  const file = input.files ? input.files[0] : null;
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const { headers, rows } = parseCsvText(e.target.result);
+    if (!rows.length) { toast('ไม่พบข้อมูลในไฟล์ CSV', 'error'); return; }
+    csvHeaders = headers;
+    csvParsedRows = rows.map(mapRow).filter(r => r.full_name || r.village);
+    renderCsvPreview(headers, rows);
+    document.getElementById('csvPreviewBox').style.display = 'block';
+    document.getElementById('csvDropZone').style.display = 'none';
+    document.getElementById('csvPreviewTitle').textContent =
+      `👁️ ตัวอย่างข้อมูล (${csvParsedRows.length.toLocaleString()} แถว พร้อม import)`;
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function renderCsvPreview(headers, rows) {
+  // Show column mapping
+  const mapEl = document.getElementById('csvColumnMap');
+  const mapped = headers.map(h => {
+    const canon = COL_ALIASES[h] || COL_ALIASES[h.replace(/_/g,' ')] || null;
+    const ok = !!canon;
+    return `<span style="display:inline-flex;align-items:center;gap:4px;margin:3px;background:${ok?'#e8f5e9':'#fff3e0'};border:1px solid ${ok?'#a5d6a7':'#ffb74d'};border-radius:6px;padding:2px 10px;font-size:12px">
+      ${ok?'✅':'⚠️'} <code>${h}</code>${ok && canon!==h ? ` → <strong>${canon}</strong>` : ''}
+    </span>`;
+  }).join('');
+  mapEl.innerHTML = '<div style="margin-bottom:8px;font-size:12px;font-weight:600;color:var(--green-dark)">การแปลงคอลัมน์:</div>' + mapEl.innerHTML = '<div style="margin-bottom:8px;font-size:12px;font-weight:600;color:var(--green-dark)">การแปลงคอลัมน์:</div>' + mapped;
+  // Preview table (first 10 rows)
+  const thead = document.getElementById('csvPreviewHead');
+  const tbody = document.getElementById('csvPreviewBody');
+  thead.innerHTML = '<tr>' + headers.map(h => `<th style="background:var(--green-dark);color:white;padding:6px 10px;font-size:11px;white-space:nowrap">${h}</th>`).join('') + '</tr>';
+  tbody.innerHTML = rows.slice(0,10).map((r,i) =>
+    `<tr style="${i%2?'background:#f9fbf9':''}">${headers.map(h=>`<td style="padding:5px 10px;border-bottom:1px solid #eef2ef;font-size:11px;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis">${r[h]||''}</td>`).join('')}</tr>`
+  ).join('');
+}
+
+async function startCsvImport() {
+  if (!csvParsedRows.length) { toast('ไม่มีข้อมูลที่จะ import', 'error'); return; }
+  document.getElementById('csvPreviewBox').style.display = 'none';
+  document.getElementById('csvProgressBox').style.display = 'block';
+  document.getElementById('csvResultBox').style.display = 'none';
+  const batchSize = parseInt(document.getElementById('csvBatchSize').value) || 100;
+  const total = csvParsedRows.length;
+  let success = 0, skipped = 0, errors = 0;
+  const errorList = [];
+  for (let i = 0; i < total; i += batchSize) {
+    const batch = csvParsedRows.slice(i, i + batchSize);
+    const pct = Math.round((i / total) * 100);
+    document.getElementById('csvProgressBar').style.width = pct + '%';
+    document.getElementById('csvProgressPct').textContent = pct + '%';
+    document.getElementById('csvProgressStatus').textContent =
+      `กำลัง import แถว ${i+1}–${Math.min(i+batchSize, total)} จาก ${total.toLocaleString()}`;
+    document.getElementById('csvProgressDetail').textContent =
+      `✅ ${success} สำเร็จ  ⏭️ ${skipped} ข้าม  ❌ ${errors} ผิดพลาด`;
+    try {
+      const { error } = await sb.from('population').upsert(batch, {
+        onConflict: 'id_card',
+        ignoreDuplicates: document.getElementById('csvSkipDup').checked
+      });
+      if (error) {
+        // fallback: insert without upsert
+        const { error: e2 } = await sb.from('population').insert(batch);
+        if (e2) { errors += batch.length; errorList.push(e2.message); }
+        else success += batch.length;
+      } else {
+        success += batch.length;
+      }
+    } catch(e) {
+      errors += batch.length;
+      errorList.push(e.message);
+    }
+    await new Promise(r => setTimeout(r, 80)); // small delay
+  }
+  // Done
+  document.getElementById('csvProgressBar').style.width = '100%';
+  document.getElementById('csvProgressPct').textContent = '100%';
+  document.getElementById('csvProgressStatus').textContent = 'เสร็จแล้ว!';
+  document.getElementById('csvProgressBox').style.display = 'none';
+  document.getElementById('csvResultBox').style.display = 'block';
+  document.getElementById('csvResultContent').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px">
+      <div class="sum-card" style="border-top-color:#2e7d32">
+        <h3>Import สำเร็จ</h3><div class="sum-num" style="color:#2e7d32">${success.toLocaleString()}</div><div class="sum-unit">แถว</div>
+      </div>
+      <div class="sum-card" style="border-top-color:var(--gold)">
+        <h3>ข้ามซ้ำ</h3><div class="sum-num" style="color:var(--gold)">${skipped}</div><div class="sum-unit">แถว</div>
+      </div>
+      <div class="sum-card" style="border-top-color:#c62828">
+        <h3>ผิดพลาด</h3><div class="sum-num" style="color:#c62828">${errors}</div><div class="sum-unit">แถว</div>
+      </div>
+    </div>
+    ${errorList.length ? `<details style="font-size:12px;color:#c62828"><summary>รายละเอียดข้อผิดพลาด (${errorList.length})</summary><pre style="background:#fff5f5;padding:10px;border-radius:6px;margin-top:6px;overflow-x:auto">${errorList.slice(0,5).join('\n')}</pre></details>` : ''}
+    <p style="font-size:13px;color:var(--gray-mid);margin-top:8px">นำเข้าข้อมูล ${total.toLocaleString()} รายการ จากไฟล์ CSV เรียบร้อยแล้ว</p>`;
+  toast(`Import เสร็จ! ${success} รายการสำเร็จ`);
+}
+
+function resetCsvImport() {
+  csvParsedRows = []; csvHeaders = [];
+  document.getElementById('csvFileInput').value = '';
+  document.getElementById('csvDropZone').style.display = 'block';
+  document.getElementById('csvPreviewBox').style.display = 'none';
+  document.getElementById('csvProgressBox').style.display = 'none';
+  document.getElementById('csvResultBox').style.display = 'none';
+}
 
 // ============================================================
 //  INIT
