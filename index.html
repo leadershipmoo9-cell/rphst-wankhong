@@ -604,8 +604,8 @@
         <div class="form-group"><label>เวลา</label><input type="time" id="hTime" /></div>
       </div>
       <div class="form-row">
+        <div class="form-group"><label>หมู่ที่ *</label><select id="hVillage" onchange="updateScreenerByVillage()"><option value="">-- เลือกหมู่ที่ --</option></select></div>
         <div class="form-group"><label>อสม.ผู้คัดกรอง *</label><select id="hScreener"><option value="">-- เลือก อสม. --</option></select></div>
-        <div class="form-group"><label>หมู่ที่</label><input type="number" id="hVillage" min="1" placeholder="หมู่" /></div>
         <div class="form-group"><label>ที่อยู่</label><input id="hAddress" placeholder="บ้านเลขที่..." /></div>
       </div>
     </div>
@@ -970,7 +970,7 @@ function renderMembers(){
         const members = vMembers.filter(m=>(m.position_order||5)===t.order);
         if(members.length===0) return '';
         return `<div class="org-tier">
-          <div class="org-tier-label">${t.label}</div>
+          <div class="org-tier-label" style="display:flex;align-items:center;gap:6px"><span style="background:var(--green-dark);color:white;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${t.order}</span>${t.label}</div>
           <div class="org-row">${members.map(m=>orgCard(m,t)).join('')}</div>
         </div>`;
       }).join('');
@@ -1360,6 +1360,24 @@ async function deleteNews(id){ if(!confirm('ลบข่าวสารนี้
 // ============================================================
 //  HEALTH SCREENING
 // ============================================================
+function updateScreenerByVillage(){
+  const village=parseInt(document.getElementById('hVillage').value)||0;
+  const sc=document.getElementById('hScreener');
+  const prev=sc.value;
+  sc.innerHTML='<option value="">-- เลือก อสม. --</option>';
+  const asoms=membersData.filter(m=>m.type==='asom'&&(!village||parseInt(m.village)===village));
+  asoms.sort((a,b)=>(a.position_order||5)-(b.position_order||5)).forEach(m=>{
+    const o=document.createElement('option');
+    o.value=m.name;
+    o.textContent=m.name+(m.position_label?' — '+m.position_label:'')+(m.village?' (หมู่ '+m.village+')':'');
+    sc.appendChild(o);
+  });
+  // restore previous value if still valid
+  if(prev && [...sc.options].some(o=>o.value===prev)) sc.value=prev;
+  // auto-select if only one option
+  else if(asoms.length===1) sc.value=asoms[0].name;
+}
+
 function initHealthFilters(){
   const ys=document.getElementById('filterHealthYear');
   if(!ys.innerHTML){ ys.innerHTML=YEARS_LIST.map(y=>`<option value="${y}">${y}</option>`).join(''); ys.value=new Date().getFullYear()+543; }
@@ -1367,11 +1385,19 @@ function initHealthFilters(){
   if(ms.options.length===1) MONTHS_TH.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; ms.appendChild(o); });
   const hy=document.getElementById('hYear'); if(!hy.innerHTML) hy.innerHTML=YEARS_LIST.map(y=>`<option value="${y}">${y}</option>`).join('');
   const hm=document.getElementById('hMonth'); if(!hm.innerHTML) MONTHS_TH.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; hm.appendChild(o); });
-  const sc=document.getElementById('hScreener');
-  if(sc.options.length<=1){
-    const asom=membersData.filter(m=>m.type==='asom');
-    asom.forEach(m=>{ const o=document.createElement('option'); o.value=m.name; o.textContent=m.name+(m.village?' (หมู่ '+m.village+')':''); sc.appendChild(o); });
+  // Populate village dropdown
+  const hv=document.getElementById('hVillage');
+  if(hv.options.length<=1){
+    const VILLAGE_ORDER=[8,9,11,13,14,16];
+    const villages=[...new Set(membersData.filter(m=>m.type==='asom').map(m=>parseInt(m.village)).filter(Boolean))].sort((a,b)=>{
+      const ia=VILLAGE_ORDER.indexOf(a), ib=VILLAGE_ORDER.indexOf(b);
+      return (ia===-1?99:ia)-(ib===-1?99:ib);
+    });
+    villages.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent='หมู่ '+v; hv.appendChild(o); });
   }
+  // Populate screener based on current village
+  const sc=document.getElementById('hScreener');
+  if(sc.options.length<=1){ updateScreenerByVillage(); }
   const dashY=document.getElementById('dashYear'); if(!dashY.innerHTML) dashY.innerHTML=YEARS_LIST.map(y=>`<option value="${y}">${y}</option>`).join('');
 }
 
@@ -1478,6 +1504,7 @@ async function openEditHealth(id){
   document.getElementById('hOccupy').value=r.occupation||'';
   document.getElementById('hAddress').value=r.address||'';
   document.getElementById('hVillage').value=r.village||'';
+  updateScreenerByVillage();
   document.getElementById('hYear').value=r.year;
   document.getElementById('hMonth').value=r.month;
   document.getElementById('hDate').value=r.screen_date||'';
