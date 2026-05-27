@@ -2255,7 +2255,7 @@ function renderCsvPreview(headers, rows) {
       ${ok?'✅':'⚠️'} <code>${h}</code>${ok && canon!==h ? ` → <strong>${canon}</strong>` : ''}
     </span>`;
   }).join('');
-  mapEl.innerHTML = '<div style="margin-bottom:8px;font-size:12px;font-weight:600;color:var(--green-dark)">การแปลงคอลัมน์:</div>' + mapEl.innerHTML = '<div style="margin-bottom:8px;font-size:12px;font-weight:600;color:var(--green-dark)">การแปลงคอลัมน์:</div>' + mapped;
+  mapEl.innerHTML = '<div style="margin-bottom:8px;font-size:12px;font-weight:600;color:var(--green-dark)">การแปลงคอลัมน์:</div>' + mapped;
   // Preview table (first 10 rows)
   const thead = document.getElementById('csvPreviewHead');
   const tbody = document.getElementById('csvPreviewBody');
