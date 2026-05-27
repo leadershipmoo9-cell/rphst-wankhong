@@ -212,7 +212,7 @@
 <!-- CONFIG -->
 <script>
   const SUPABASE_URL = 'https://nzdbtqdxgkjiqywrnysh.supabase.co';
-  const SUPABASE_KEY = 'const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56ZGJ0cWR4Z2tqaXF5d3JueXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzU4NDIsImV4cCI6MjA5NDk1MTg0Mn0.SFve344CYSexUqx9EyU4r7MwPr2eMH4c3Q0zh9Vf-vc';';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56ZGJ0cWR4Z2tqaXF5d3JueXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzU4NDIsImV4cCI6MjA5NDk1MTg0Mn0.SFve344CYSexUqx9EyU4r7MwPr2eMH4c3Q0zh9Vf-vc';
   const CLOUDINARY_CLOUD = 'djpdd4h3c';
   const CLOUDINARY_PRESET = 'asom-media';
   const ADMIN_PIN = 'admin1234';
@@ -2280,36 +2280,6 @@ async function testImportConnection() {
         ❌ <strong>เชื่อมต่อไม่สำเร็จ:</strong> <code style="color:#c62828">${error.message}</code>
       </div>`;
   } else {
-    document.getElementById('csvConnResult').innerHTML =
-      `<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:12px;margin-top:10px;font-size:13px">
-        ✅ <strong>เชื่อมต่อสำเร็จ!</strong> ตาราง population พร้อมใช้งาน
-      </div>`;
-  }
-  if(btn){btn.disabled=false;btn.textContent='🔌 ทดสอบการเชื่อมต่อ';}
-}
-  if(error){
-    document.getElementById('csvConnResult').innerHTML =
-      `<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:8px;padding:12px;margin-top:10px;font-size:13px">
-        ❌ <strong>เชื่อมต่อไม่สำเร็จ:</strong><br/>
-        <code style="color:#c62828;font-size:12px">${error.message}</code><br/><br/>
-        <strong>วิธีแก้:</strong> รัน SQL นี้ใน Supabase → SQL Editor:<br/>
-        <pre style="background:#f5f5f5;padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;margin-top:6px">CREATE TABLE IF NOT EXISTS public.population (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  village integer,
-  house_number text,
-  full_name text,
-  gender text,
-  birthdate date,
-  id_card text,
-  phone text,
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.population ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow_all" ON public.population FOR ALL USING (true) WITH CHECK (true);</pre>
-      </div>`;
-  } else {
-    // cleanup test row
-    if(data && data[0]) await sb.from('population').delete().eq('id', data[0].id);
     document.getElementById('csvConnResult').innerHTML =
       `<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:12px;margin-top:10px;font-size:13px">
         ✅ <strong>เชื่อมต่อสำเร็จ!</strong> ตาราง population พร้อมใช้งาน
