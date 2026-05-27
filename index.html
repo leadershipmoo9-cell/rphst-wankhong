@@ -14,11 +14,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <!-- SheetJS CDN (Excel export) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
-    /* ============================================================
-       CONFIG — แก้ค่าด้านล่างให้ตรงกับ account ของคุณ
-       ============================================================ */
     :root {
       --green-dark: #1a5c38;
       --green-mid: #2d8a55;
@@ -155,41 +154,40 @@
     .chat-send-btn:hover{background:var(--green-dark)}
     .health-section{background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;margin-bottom:12px}
     .health-section-title{font-family:'Kanit',sans-serif;font-size:15px;font-weight:600;color:var(--green-dark);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--green-pale)}
+    .bp-reading-label{font-size:11px;font-weight:700;color:var(--green-dark);background:var(--green-pale);border-radius:6px;padding:3px 8px;margin-bottom:8px;display:inline-block}
     .spinner{width:40px;height:40px;border:4px solid var(--green-pale);border-top-color:var(--green-mid);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
     @keyframes spin{to{transform:rotate(360deg)}}
     .toast-container{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px}
     .toast-item{background:var(--green-dark);color:white;padding:12px 20px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;max-width:320px;animation:toastIn .3s ease}
     .toast-item.error{background:#c62828}
-
-/* ── ORG CHART ── */
-.org-village-block{margin-bottom:36px}
-.org-village-header{font-family:'Kanit',sans-serif;font-size:17px;color:var(--green-dark);font-weight:700;margin-bottom:18px;padding:10px 18px;background:linear-gradient(90deg,var(--green-pale),white);border-radius:var(--radius);border-left:5px solid var(--green-dark);display:flex;align-items:center;gap:10px}
-.org-tier{margin-bottom:14px}
-.org-tier-label{font-size:11px;font-weight:700;color:var(--gray-mid);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-left:4px}
-.org-row{display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-start}
-.org-card{background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 12px;text-align:center;width:150px;flex-shrink:0;border:2px solid transparent;transition:.2s;cursor:pointer;position:relative}
-.org-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(26,92,56,.18)}
-.org-card.tier-1{border-color:var(--gold);background:linear-gradient(135deg,#fffdf0,white)}
-.org-card.tier-2{border-color:var(--green-mid)}
-.org-card.tier-3{border-color:#81c784}
-.org-card.tier-4{border-color:#aed581}
-.org-card.tier-5{border-color:#e0e0e0}
-.org-pos-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:700;border-radius:99px;padding:2px 10px;color:white}
-.badge-tier-1{background:var(--gold)}
-.badge-tier-2{background:var(--green-mid)}
-.badge-tier-3{background:#43a047}
-.badge-tier-4{background:#7cb342}
-.badge-tier-5{background:#9e9e9e}
-.org-photo{width:64px;height:64px;border-radius:50%;margin:10px auto 8px;object-fit:cover;border:3px solid var(--green-light);background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:28px}
-.org-name{font-weight:700;font-size:12px;color:var(--text-main);margin-bottom:2px;line-height:1.3}
-.org-age{font-size:10px;color:var(--gray-mid);margin-bottom:3px}
-.org-phone{font-size:12px;color:var(--green-dark);font-weight:700}
-/* medical list */
-.medical-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px}
-.medical-card{background:white;border-radius:var(--radius);padding:16px;text-align:center;box-shadow:var(--shadow);border:2px solid var(--green-light);cursor:pointer;transition:.2s}
-.medical-card:hover{transform:translateY(-2px);border-color:var(--green-dark)}
-.med-order{position:absolute;top:8px;left:8px;background:var(--green-dark);color:white;border-radius:50%;width:22px;height:22px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
-@keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    /* ── ORG CHART ── */
+    .org-village-block{margin-bottom:36px}
+    .org-village-header{font-family:'Kanit',sans-serif;font-size:17px;color:var(--green-dark);font-weight:700;margin-bottom:18px;padding:10px 18px;background:linear-gradient(90deg,var(--green-pale),white);border-radius:var(--radius);border-left:5px solid var(--green-dark);display:flex;align-items:center;gap:10px}
+    .org-tier{margin-bottom:14px}
+    .org-tier-label{font-size:11px;font-weight:700;color:var(--gray-mid);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-left:4px}
+    .org-row{display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-start}
+    .org-card{background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 12px;text-align:center;width:150px;flex-shrink:0;border:2px solid transparent;transition:.2s;cursor:pointer;position:relative}
+    .org-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(26,92,56,.18)}
+    .org-card.tier-1{border-color:var(--gold);background:linear-gradient(135deg,#fffdf0,white)}
+    .org-card.tier-2{border-color:var(--green-mid)}
+    .org-card.tier-3{border-color:#81c784}
+    .org-card.tier-4{border-color:#aed581}
+    .org-card.tier-5{border-color:#e0e0e0}
+    .org-pos-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:700;border-radius:99px;padding:2px 10px;color:white}
+    .badge-tier-1{background:var(--gold)}
+    .badge-tier-2{background:var(--green-mid)}
+    .badge-tier-3{background:#43a047}
+    .badge-tier-4{background:#7cb342}
+    .badge-tier-5{background:#9e9e9e}
+    .org-photo{width:64px;height:64px;border-radius:50%;margin:10px auto 8px;object-fit:cover;border:3px solid var(--green-light);background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:28px}
+    .org-name{font-weight:700;font-size:12px;color:var(--text-main);margin-bottom:2px;line-height:1.3}
+    .org-age{font-size:10px;color:var(--gray-mid);margin-bottom:3px}
+    .org-phone{font-size:12px;color:var(--green-dark);font-weight:700}
+    .medical-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px}
+    .medical-card{background:white;border-radius:var(--radius);padding:16px;text-align:center;box-shadow:var(--shadow);border:2px solid var(--green-light);cursor:pointer;transition:.2s}
+    .medical-card:hover{transform:translateY(-2px);border-color:var(--green-dark)}
+    .med-order{position:absolute;top:8px;left:8px;background:var(--green-dark);color:white;border-radius:50%;width:22px;height:22px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+    @keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     .admin-bar{background:var(--gold-light);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1.5px solid var(--gold)}
     .admin-badge{background:var(--gold);color:white;border-radius:99px;padding:4px 14px;font-size:12px;font-weight:700}
     .login-box{background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 28px;max-width:400px;margin:40px auto}
@@ -204,14 +202,14 @@
     .chart-card{background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
     .chart-card h3{font-family:'Kanit',sans-serif;font-size:15px;color:var(--green-dark);margin-bottom:16px}
     footer{background:var(--green-dark);color:rgba(255,255,255,.7);text-align:center;padding:16px 24px;font-size:13px;margin-top:40px}
+    .remember-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:13px;color:var(--text-sub)}
+    .remember-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--green-mid);flex-shrink:0}
     @media(max-width:600px){.site-header h1{font-size:15px}.logo-circle{width:58px;height:58px}.nav-btn{padding:10px 12px;font-size:12px}.main-content{padding:16px 10px}.member-grid{grid-template-columns:repeat(auto-fill,minmax(135px,1fr))}.dashboard-charts{grid-template-columns:1fr}.hero-banner{height:220px}.hero-title{font-size:20px}}
   </style>
 </head>
 <body>
 
-<!-- ============================================================
-     CONFIG — แก้ 2 บรรทัดนี้
-     ============================================================ -->
+<!-- CONFIG -->
 <script>
   const SUPABASE_URL = 'https://nzdbtqdxgkjiqywrnysh.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56ZGJ0cWR4Z2tqaXF5d3JueXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzU4NDIsImV4cCI6MjA5NDk1MTg0Mn0.SFve344CYSexUqx9EyU4r7MwPr2eMH4c3Q0zh9Vf-vc';
@@ -220,9 +218,6 @@
   const ADMIN_PIN = 'admin1234';
 </script>
 
-<!-- ============================================================
-     HTML Structure
-     ============================================================ -->
 <div class="marquee-bar"><span class="marquee-inner" id="marqueeText">🌿 ยินดีต้อนรับสู่เว็บไซต์ รพสต.แวนโค้ง | โรงพยาบาลส่งเสริมสุขภาพตำบล | บริการด้วยใจ ห่วงใยสุขภาพชุมชน 💚</span></div>
 
 <header class="site-header">
@@ -377,7 +372,7 @@
     </div>
     <div class="summary-grid" id="healthStats"></div>
     <div class="table-wrap"><div class="table-scroll"><table>
-      <thead><tr><th>ปี</th><th>เดือน</th><th>วัน/เวลา</th><th>อสม.ผู้คัดกรอง</th><th>หมู่</th><th>ชื่อ-สกุล</th><th>วันเกิด</th><th>อายุ</th><th>เลขบัตร</th><th>เบอร์โทร</th><th>น้ำหนัก</th><th>ส่วนสูง</th><th>BMI</th><th>รอบเอว</th><th>การศึกษา</th><th>อาชีพ</th><th>สถานภาพ</th><th>ความดัน1</th><th>ความดัน2</th><th>ค่าความดัน 7 สี</th><th>กลุ่มความดัน</th><th>น้ำตาล</th><th>ค่าน้ำตาล 7 สี</th><th>กลุ่มน้ำตาล</th><th>สูบบุหรี่</th><th>มวน/วัน</th><th>ชนิดบุหรี่</th><th>ระยะเวลาสูบ</th><th>แอลกอฮอล์</th><th>วัน/สัปดาห์</th><th>ภาวะซึมเศร้า</th><th></th></tr></thead>
+      <thead><tr><th>ปี</th><th>เดือน</th><th>วัน/เวลา</th><th>อสม.ผู้คัดกรอง</th><th>หมู่</th><th>ชื่อ-สกุล</th><th>วันเกิด</th><th>อายุ</th><th>เลขบัตร</th><th>เบอร์โทร</th><th>น้ำหนัก</th><th>ส่วนสูง</th><th>BMI</th><th>รอบเอว</th><th>การศึกษา</th><th>อาชีพ</th><th>สถานภาพ</th><th>ความดัน1 (SYS/DIA/ชีพจร)</th><th>ความดัน2 (SYS/DIA/ชีพจร)</th><th>ความดัน3 (SYS/DIA/ชีพจร)</th><th>ค่าความดันเฉลี่ย</th><th>กลุ่มความดัน</th><th>น้ำตาล</th><th>ค่าน้ำตาล</th><th>กลุ่มน้ำตาล</th><th>สูบบุหรี่</th><th>มวน/วัน</th><th>ชนิดบุหรี่</th><th>ระยะเวลาสูบ</th><th>แอลกอฮอล์</th><th>วัน/สัปดาห์</th><th>ภาวะซึมเศร้า</th><th></th></tr></thead>
       <tbody id="healthTable"></tbody>
     </table></div></div>
   </div>
@@ -386,7 +381,10 @@
   <div id="page-dashboard" class="page">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div><h2 class="section-title">📊 Dashboard</h2><p class="section-sub">สรุปข้อมูลภาพรวม รพสต.แวนโค้ง</p></div>
-      <select id="dashYear" onchange="loadDashboard()" style="padding:7px 12px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px"></select>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <select id="dashYear" onchange="loadDashboard()" style="padding:7px 12px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px"></select>
+        <button class="btn-outline" onclick="exportHealthExcel()">📥 Export Excel</button>
+      </div>
     </div>
     <div class="summary-grid" id="dashStats"></div>
     <div class="dashboard-charts">
@@ -444,7 +442,6 @@
       <div class="contact-card">
         <h3>⚙️ ข้อมูลระบบ</h3>
         <div style="background:var(--green-pale);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.8">
-          <p><strong>รหัสผ่านผู้ดูแล:</strong> admin1234</p>
           <p><strong>Supabase:</strong> เชื่อมต่อแล้ว ✅</p>
           <p><strong>Cloudinary:</strong> เชื่อมต่อแล้ว ✅</p>
         </div>
@@ -478,56 +475,32 @@
         <option value="asom">อสม.</option>
       </select>
     </div>
-
-    <!-- ชื่อแยกช่อง -->
     <div class="form-row">
       <div class="form-group">
         <label>คำนำหน้า *</label>
         <select id="editMemberPrefix">
           <option value="">-- เลือก --</option>
-          <option>นาย</option>
-          <option>นาง</option>
-          <option>นางสาว</option>
-          <option>เด็กชาย</option>
-          <option>เด็กหญิง</option>
-          <option>ดร.</option>
-          <option>นพ.</option>
-          <option>พญ.</option>
-          <option>ทพ.</option>
-          <option>ทพญ.</option>
+          <option>นาย</option><option>นาง</option><option>นางสาว</option>
+          <option>เด็กชาย</option><option>เด็กหญิง</option>
+          <option>ดร.</option><option>นพ.</option><option>พญ.</option>
+          <option>ทพ.</option><option>ทพญ.</option>
         </select>
       </div>
-      <div class="form-group">
-        <label>ชื่อ *</label>
-        <input id="editMemberFirstName" placeholder="ชื่อ" />
-      </div>
-      <div class="form-group">
-        <label>นามสกุล *</label>
-        <input id="editMemberLastName" placeholder="นามสกุล" />
-      </div>
+      <div class="form-group"><label>ชื่อ *</label><input id="editMemberFirstName" placeholder="ชื่อ" /></div>
+      <div class="form-group"><label>นามสกุล *</label><input id="editMemberLastName" placeholder="นามสกุล" /></div>
     </div>
-
-    <!-- วันเกิด + อายุ -->
     <div class="form-row">
       <div class="form-group">
         <label>วันเกิด</label>
         <div style="display:flex;gap:6px">
-          <select id="editMemberBirthDay" style="flex:1;padding:8px 6px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" onchange="calcMemberAge()">
-            <option value="">วัน</option>
-          </select>
-          <select id="editMemberBirthMonth" style="flex:1.5;padding:8px 6px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" onchange="calcMemberAge()">
-            <option value="">เดือน</option>
-          </select>
-          <select id="editMemberBirthYear" style="flex:1.5;padding:8px 6px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" onchange="calcMemberAge()">
-            <option value="">ปี พ.ศ.</option>
-          </select>
+          <select id="editMemberBirthDay" style="flex:1;padding:8px 6px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" onchange="calcMemberAge()"><option value="">วัน</option></select>
+          <select id="editMemberBirthMonth" style="flex:1.5;padding:8px 6px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" onchange="calcMemberAge()"><option value="">เดือน</option></select>
+          <select id="editMemberBirthYear" style="flex:1.5;padding:8px 6px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" onchange="calcMemberAge()"><option value="">ปี พ.ศ.</option></select>
         </div>
       </div>
     </div>
     <div id="editMemberAgeDisplay" style="display:none;background:var(--green-pale);border-radius:8px;padding:7px 14px;margin-bottom:12px;font-size:13px;font-weight:700;color:var(--green-dark)"></div>
-
     <div class="form-group"><label>ตำแหน่ง/หน้าที่</label><input id="editMemberRole" placeholder="เช่น นักวิชาการสาธารณสุข" /></div>
-    <!-- ตำแหน่งใน อสม. -->
     <div class="form-group" id="editMemberPosGroup" style="display:none">
       <label>ตำแหน่งใน อสม. *</label>
       <select id="editMemberPosition">
@@ -539,21 +512,15 @@
       </select>
     </div>
     <div class="form-group"><label>เบอร์โทร</label><input id="editMemberPhone" placeholder="0XX-XXX-XXXX" /></div>
-
-    <!-- หมู่ เฉพาะ อสม. -->
     <div class="form-group" id="editMemberVillageGroup" style="display:none">
       <label>หมู่ *</label>
       <select id="editMemberVillage">
         <option value="">-- เลือกหมู่ --</option>
-        <option value="8">หมู่ 8</option>
-        <option value="9">หมู่ 9</option>
-        <option value="11">หมู่ 11</option>
-        <option value="13">หมู่ 13</option>
-        <option value="14">หมู่ 14</option>
-        <option value="16">หมู่ 16</option>
+        <option value="8">หมู่ 8</option><option value="9">หมู่ 9</option>
+        <option value="11">หมู่ 11</option><option value="13">หมู่ 13</option>
+        <option value="14">หมู่ 14</option><option value="16">หมู่ 16</option>
       </select>
     </div>
-
     <div class="form-group">
       <label>รูปภาพ</label>
       <div id="editMemberPhotoPreview"></div>
@@ -605,10 +572,29 @@
   </div>
 </div>
 
+<!-- Admin Login Modal -->
+<div class="modal-overlay" id="modalAdminLogin">
+  <div class="modal" style="max-width:380px">
+    <button class="modal-close" onclick="closeModal('modalAdminLogin')">×</button>
+    <h2>🔐 เข้าสู่ระบบผู้ดูแล</h2>
+    <div class="form-group">
+      <label>รหัสผ่าน</label>
+      <input type="password" id="adminPinInput" placeholder="กรอกรหัสผ่าน" onkeydown="if(event.key==='Enter')submitAdminLogin()" />
+    </div>
+    <div class="remember-row">
+      <input type="checkbox" id="adminRememberMe" />
+      <label for="adminRememberMe">จดจำการเข้าสู่ระบบในเครื่องนี้</label>
+    </div>
+    <button class="btn-primary" style="width:100%" onclick="submitAdminLogin()">เข้าสู่ระบบ</button>
+  </div>
+</div>
+
+<!-- Health Screening Modal -->
 <div class="modal-overlay" id="modalHealthForm">
   <div class="modal" style="max-width:800px">
     <button class="modal-close" onclick="closeModal('modalHealthForm')">×</button>
     <h2 id="healthFormTitle">🩺 บันทึกการคัดกรองสุขภาพ</h2>
+
     <div class="health-section">
       <div class="health-section-title">📋 ข้อมูลการคัดกรอง</div>
       <div class="form-row">
@@ -623,23 +609,74 @@
         <div class="form-group"><label>ที่อยู่</label><input id="hAddress" placeholder="บ้านเลขที่..." /></div>
       </div>
     </div>
+
     <div class="health-section">
       <div class="health-section-title">👤 ข้อมูลประชากร</div>
+      <!-- ชื่อแยกช่อง -->
       <div class="form-row">
-        <div class="form-group" style="grid-column:span 2"><label>ชื่อ-สกุล *</label><input id="hName" placeholder="ชื่อ นามสกุล" /></div>
+        <div class="form-group">
+          <label>คำนำหน้า *</label>
+          <select id="hPrefix">
+            <option value="">-- เลือก --</option>
+            <option>นาย</option><option>นาง</option><option>นางสาว</option>
+            <option>เด็กชาย</option><option>เด็กหญิง</option>
+            <option>ดร.</option><option>นพ.</option><option>พญ.</option>
+          </select>
+        </div>
+        <div class="form-group"><label>ชื่อ *</label><input id="hFirstName" placeholder="ชื่อ" /></div>
+        <div class="form-group"><label>นามสกุล *</label><input id="hLastName" placeholder="นามสกุล" /></div>
+      </div>
+      <div class="form-row">
         <div class="form-group"><label>วันเกิด</label><input type="date" id="hBirth" oninput="calcAgeAuto()" /></div>
       </div>
-      <div id="hAgeDisplay" style="display:none;background:var(--green-pale);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:14px;font-weight:700;color:var(--green-dark);display:inline-block"></div>
+      <div id="hAgeDisplay" style="display:none;background:var(--green-pale);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:14px;font-weight:700;color:var(--green-dark)"></div>
       <div class="form-row">
         <div class="form-group"><label>เลขบัตรประชาชน</label><input id="hIdCard" placeholder="13 หลัก" maxlength="13" /></div>
         <div class="form-group"><label>เบอร์โทร</label><input id="hPhone" placeholder="0XX-XXX-XXXX" /></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>การศึกษา</label><select id="hEdu"><option value="">-- เลือก --</option><option>ไม่ได้เรียน</option><option>ประถมศึกษา</option><option>มัธยมศึกษาตอนต้น</option><option>มัธยมศึกษาตอนปลาย/ปวช.</option><option>อนุปริญญา/ปวส.</option><option>ปริญญาตรี</option><option>สูงกว่าปริญญาตรี</option></select></div>
-        <div class="form-group"><label>อาชีพ</label><input id="hOccupy" placeholder="อาชีพ" /></div>
-        <div class="form-group"><label>สถานภาพ</label><select id="hMarital"><option value="">-- เลือก --</option><option>โสด</option><option>สมรส</option><option>หม้าย</option><option>หย่าร้าง</option><option>แยกกันอยู่</option></select></div>
+        <div class="form-group">
+          <label>การศึกษา</label>
+          <select id="hEdu">
+            <option value="">-- เลือก --</option>
+            <option>ไม่ได้เรียน</option><option>ประถมศึกษา</option>
+            <option>มัธยมศึกษาตอนต้น</option><option>มัธยมศึกษาตอนปลาย/ปวช.</option>
+            <option>อนุปริญญา/ปวส.</option><option>ปริญญาตรี</option>
+            <option>สูงกว่าปริญญาตรี</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>อาชีพ</label>
+          <select id="hOccupy">
+            <option value="">-- เลือก --</option>
+            <option>เกษตรกร</option>
+            <option>รับจ้างทั่วไป</option>
+            <option>ค้าขาย/ธุรกิจส่วนตัว</option>
+            <option>ข้าราชการ/พนักงานรัฐ</option>
+            <option>พนักงานเอกชน</option>
+            <option>ประมง</option>
+            <option>ปศุสัตว์</option>
+            <option>แม่บ้าน/พ่อบ้าน</option>
+            <option>นักเรียน/นักศึกษา</option>
+            <option>ว่างงาน</option>
+            <option>เกษียณอายุ</option>
+            <option>ไม่ประกอบอาชีพ</option>
+            <option>อาชีพอิสระ</option>
+            <option>แรงงานต่างด้าว</option>
+            <option>อื่นๆ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>สถานภาพ</label>
+          <select id="hMarital">
+            <option value="">-- เลือก --</option>
+            <option>โสด</option><option>สมรส</option><option>หม้าย</option>
+            <option>หย่าร้าง</option><option>แยกกันอยู่</option>
+          </select>
+        </div>
       </div>
     </div>
+
     <div class="health-section">
       <div class="health-section-title">⚖️ ค่าทางร่างกาย</div>
       <div class="form-row">
@@ -649,16 +686,35 @@
         <div class="form-group"><label>รอบเอว (ซม.)</label><input type="number" id="hWaist" step="0.1" placeholder="ซม." /></div>
       </div>
     </div>
+
     <div class="health-section">
       <div class="health-section-title">❤️ ความดันโลหิต</div>
+      <p style="font-size:12px;color:var(--gray-mid);margin-bottom:12px">วัด 3 ครั้ง — ระบบจะใช้ค่าเฉลี่ยในการประเมิน (ครั้งที่ไม่ได้วัดข้ามไปได้)</p>
+
+      <div class="bp-reading-label">ครั้งที่ 1</div>
       <div class="form-row">
-        <div class="form-group"><label>ครั้งที่ 1 — SYS</label><input type="number" id="hBp1s" placeholder="mmHg" oninput="calcBpAuto()" /></div>
-        <div class="form-group"><label>ครั้งที่ 1 — DIA</label><input type="number" id="hBp1d" placeholder="mmHg" oninput="calcBpAuto()" /></div>
-        <div class="form-group"><label>ครั้งที่ 2 — SYS</label><input type="number" id="hBp2s" placeholder="mmHg" /></div>
-        <div class="form-group"><label>ครั้งที่ 2 — DIA</label><input type="number" id="hBp2d" placeholder="mmHg" /></div>
+        <div class="form-group"><label>SYS (mmHg)</label><input type="number" id="hBp1s" placeholder="SYS" oninput="calcBpAuto()" /></div>
+        <div class="form-group"><label>DIA (mmHg)</label><input type="number" id="hBp1d" placeholder="DIA" oninput="calcBpAuto()" /></div>
+        <div class="form-group"><label>ชีพจร (ครั้ง/นาที)</label><input type="number" id="hBp1p" placeholder="Pulse" oninput="calcBpAuto()" /></div>
       </div>
-      <div id="hBpResult" style="margin-top:6px"></div>
+
+      <div class="bp-reading-label">ครั้งที่ 2</div>
+      <div class="form-row">
+        <div class="form-group"><label>SYS (mmHg)</label><input type="number" id="hBp2s" placeholder="SYS" oninput="calcBpAuto()" /></div>
+        <div class="form-group"><label>DIA (mmHg)</label><input type="number" id="hBp2d" placeholder="DIA" oninput="calcBpAuto()" /></div>
+        <div class="form-group"><label>ชีพจร (ครั้ง/นาที)</label><input type="number" id="hBp2p" placeholder="Pulse" oninput="calcBpAuto()" /></div>
+      </div>
+
+      <div class="bp-reading-label">ครั้งที่ 3</div>
+      <div class="form-row">
+        <div class="form-group"><label>SYS (mmHg)</label><input type="number" id="hBp3s" placeholder="SYS" oninput="calcBpAuto()" /></div>
+        <div class="form-group"><label>DIA (mmHg)</label><input type="number" id="hBp3d" placeholder="DIA" oninput="calcBpAuto()" /></div>
+        <div class="form-group"><label>ชีพจร (ครั้ง/นาที)</label><input type="number" id="hBp3p" placeholder="Pulse" oninput="calcBpAuto()" /></div>
+      </div>
+
+      <div id="hBpResult" style="margin-top:8px"></div>
     </div>
+
     <div class="health-section">
       <div class="health-section-title">🩸 ค่าน้ำตาลในเลือด</div>
       <div class="form-row">
@@ -666,6 +722,7 @@
       </div>
       <div id="hSugarResult" style="margin-top:6px"></div>
     </div>
+
     <div class="health-section">
       <div class="health-section-title">🚬 การสูบบุหรี่</div>
       <div class="form-group"><label>คัดกรองผู้สูบบุหรี่</label><select id="hSmoke" onchange="toggleSmokeFields()"><option value="ไม่สูบ">ไม่สูบ</option><option value="สูบ">สูบ</option><option value="เคยสูบ">เคยสูบ (เลิกแล้ว)</option></select></div>
@@ -677,17 +734,20 @@
         </div>
       </div>
     </div>
+
     <div class="health-section">
       <div class="health-section-title">🍺 แอลกอฮอล์</div>
       <div class="form-group"><label>ดื่มเครื่องดื่มแอลกอฮอล์</label><select id="hAlcohol" onchange="toggleAlcoholFields()"><option value="ไม่ดื่ม">ไม่ดื่ม</option><option value="ดื่ม">ดื่ม</option><option value="เคยดื่ม">เคยดื่ม (เลิกแล้ว)</option></select></div>
       <div id="hAlcoholFields" style="display:none"><div class="form-group"><label>วัน/สัปดาห์</label><input id="hAlcoholQty" placeholder="เช่น 2-3 วัน/สัปดาห์" /></div></div>
     </div>
+
     <div class="health-section">
       <div class="health-section-title">🧠 ภาวะซึมเศร้า (PHQ-2)</div>
       <div class="form-group"><label>รู้สึกหดหู่ เศร้า ท้อแท้ ในช่วง 2 สัปดาห์ที่ผ่านมา</label>
         <select id="hDepression"><option value="">-- เลือก --</option><option>ไม่มีเลย</option><option>เป็นบางวัน</option><option>บ่อยครั้ง</option><option>เกือบทุกวัน</option></select>
       </div>
     </div>
+
     <button class="btn-primary" style="width:100%;padding:12px;font-size:15px;margin-top:8px" onclick="saveHealth()">💾 บันทึกข้อมูลคัดกรอง</button>
   </div>
 </div>
@@ -774,40 +834,62 @@ function showPage(id, btn) {
 }
 
 // ============================================================
-//  ADMIN LOGIN (inline — no modal needed)
+//  ADMIN LOGIN — modal with Remember Me
 // ============================================================
 function renderAdminBar(){
   const el = document.getElementById('adminBarHome');
   if(isAdmin){
     el.innerHTML=`<div class="admin-bar"><span class="admin-badge">⚙️ ผู้ดูแลระบบ</span>
       <button class="btn-primary" onclick="openAddMember()">➕ เพิ่มสมาชิก</button>
-      <button class="btn-outline" onclick="isAdmin=false;localStorage.removeItem('admin_wk');renderAdminBar();loadMembers()">ออกจากระบบ</button></div>`;
+      <button class="btn-outline" onclick="adminLogout()">ออกจากระบบ</button></div>`;
   } else {
     el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-      <button class="btn-outline" onclick="doAdminLogin()">🔐 เข้าสู่ระบบ</button></div>`;
+      <button class="btn-outline" onclick="openAdminLogin()">🔐 เข้าสู่ระบบ</button></div>`;
   }
 }
-function doAdminLogin(){
-  const pin = prompt('กรอกรหัสผ่านผู้ดูแล:');
+function openAdminLogin(){
+  document.getElementById('adminPinInput').value='';
+  document.getElementById('adminRememberMe').checked=false;
+  openModal('modalAdminLogin');
+  setTimeout(()=>document.getElementById('adminPinInput').focus(),100);
+}
+function submitAdminLogin(){
+  const pin = document.getElementById('adminPinInput').value;
   if(pin===ADMIN_PIN){
     isAdmin=true;
-    localStorage.setItem('admin_wk','1');
+    const remember = document.getElementById('adminRememberMe').checked;
+    if(remember){
+      localStorage.setItem('admin_wk','1');
+    } else {
+      sessionStorage.setItem('admin_wk_session','1');
+      localStorage.removeItem('admin_wk');
+    }
+    closeModal('modalAdminLogin');
     renderAdminBar();
     loadMembers();
     toast('เข้าสู่ระบบสำเร็จ');
-  } else if(pin!==null) toast('รหัสผ่านไม่ถูกต้อง','error');
+  } else {
+    toast('รหัสผ่านไม่ถูกต้อง','error');
+    document.getElementById('adminPinInput').value='';
+    document.getElementById('adminPinInput').focus();
+  }
+}
+function adminLogout(){
+  isAdmin=false;
+  localStorage.removeItem('admin_wk');
+  sessionStorage.removeItem('admin_wk_session');
+  renderAdminBar();
+  loadMembers();
 }
 
 // ============================================================
 //  MEMBERS
 // ============================================================
-
-// สร้าง dropdown วัน/เดือน/ปี พ.ศ. สำหรับ modal สมาชิก
 function initMemberBirthDropdowns(){
   const dayEl = document.getElementById('editMemberBirthDay');
   const monEl = document.getElementById('editMemberBirthMonth');
   const yrEl  = document.getElementById('editMemberBirthYear');
-  if(dayEl.options.length > 1) return; // init แล้ว
+  if(dayEl.options.length > 1) return;
   for(let d=1;d<=31;d++){
     const o=document.createElement('option'); o.value=d; o.textContent=d; dayEl.appendChild(o);
   }
@@ -840,7 +922,6 @@ function toggleMemberTypeFields(){
 
 async function loadMembers(){
   renderAdminBar();
-  // ลองดึงข้อมูลพร้อม order ก่อน ถ้า error (เช่น คอลัมน์ order_num ไม่มี) ให้ดึงแบบไม่ sort
   let result = await sb.from('members').select('*').order('order_num',{ascending:true});
   if(result.error){
     result = await sb.from('members').select('*');
@@ -871,11 +952,9 @@ function renderMembers(){
     return;
   }
   if(memberTab==='medical'){
-    // แสดงเรียงลำดับ order_num
     const sorted = [...list].sort((a,b)=>(a.order_num||999)-(b.order_num||999));
     el.innerHTML=`<div class="medical-list">${sorted.map((m,i)=>medicalCard(m,i+1)).join('')}</div>`;
   } else {
-    // ผังองค์กรแยกหมู่
     const VILLAGE_ORDER=[8,9,11,13,14,16];
     const villages=[...new Set(list.map(m=>parseInt(m.village)).filter(Boolean))].sort((a,b)=>VILLAGE_ORDER.indexOf(a)-VILLAGE_ORDER.indexOf(b));
     const TIERS=[
@@ -981,7 +1060,6 @@ function openEditMember(id){
   editingMemberId=id;
   initMemberBirthDropdowns();
   document.getElementById('memberEditTitle').textContent='✏️ แก้ไขข้อมูล';
-  // แยกชื่อ prefix/first/last จาก m.name
   const prefixes=['นาย','นาง','นางสาว','เด็กชาย','เด็กหญิง','ดร.','นพ.','พญ.','ทพ.','ทพญ.'];
   let prefix='', firstName='', lastName='', fullName=m.name||'';
   const foundPrefix = prefixes.find(p=>fullName.startsWith(p));
@@ -991,33 +1069,23 @@ function openEditMember(id){
   document.getElementById('editMemberPrefix').value=prefix;
   document.getElementById('editMemberFirstName').value=firstName;
   document.getElementById('editMemberLastName').value=lastName;
-  // วันเกิด
+  document.getElementById('editMemberRole').value=m.role||'';
+  document.getElementById('editMemberPhone').value=m.phone||'';
+  document.getElementById('editMemberType').value=m.type||'asom';
+  if(m.village) document.getElementById('editMemberVillage').value=m.village;
+  if(m.position_order&&m.position_label){
+    document.getElementById('editMemberPosition').value=`${m.position_order}|${m.position_label}`;
+  }
   if(m.birthdate){
     const bd=new Date(m.birthdate);
     document.getElementById('editMemberBirthDay').value=bd.getDate();
     document.getElementById('editMemberBirthMonth').value=bd.getMonth()+1;
     document.getElementById('editMemberBirthYear').value=bd.getFullYear()+543;
     calcMemberAge();
-  } else {
-    document.getElementById('editMemberBirthDay').value='';
-    document.getElementById('editMemberBirthMonth').value='';
-    document.getElementById('editMemberBirthYear').value='';
-    document.getElementById('editMemberAgeDisplay').style.display='none';
   }
-  // set position dropdown for asom members
-  if(m.type==='asom'){
-    const posEl=document.getElementById('editMemberPosition');
-    const po=m.position_order||5;
-    const matchOpt=Array.from(posEl.options).find(o=>parseInt(o.value.split('|')[0])===po);
-    if(matchOpt) posEl.value=matchOpt.value;
-    else posEl.value='5|สมาชิก';
+  if(m.photo_url){
+    document.getElementById('editMemberPhotoPreview').innerHTML=`<img src="${m.photo_url}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:8px;display:block" />`;
   }
-  document.getElementById('editMemberRole').value=m.role||'';
-  document.getElementById('editMemberPhone').value=m.phone||'';
-  document.getElementById('editMemberVillage').value=m.village||'';
-  document.getElementById('editMemberType').value=m.type;
-  document.getElementById('editMemberPhotoPreview').innerHTML=m.photo_url
-    ?`<img src="${m.photo_url}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:8px;display:block" />`:'';
   memberPhotoFile=null;
   toggleMemberTypeFields();
   openModal('modalMemberEdit');
@@ -1029,25 +1097,18 @@ async function saveMember(){
   const lastName=document.getElementById('editMemberLastName').value.trim();
   if(!firstName) return toast('กรุณากรอกชื่อ','error');
   const name=[prefix,firstName,lastName].filter(Boolean).join(' ');
-
   const type=document.getElementById('editMemberType').value;
-
-  // build birthdate from Buddhist Era dropdowns
   const dd=parseInt(document.getElementById('editMemberBirthDay').value);
   const mo=parseInt(document.getElementById('editMemberBirthMonth').value);
   const yy=parseInt(document.getElementById('editMemberBirthYear').value);
   let birthdate=null;
   if(dd&&mo&&yy) birthdate=new Date(yy-543, mo-1, dd).toISOString().substring(0,10);
-
-  // position (asom only)
   let position_order=5, position_label='สมาชิก';
   if(type==='asom'){
     const pv=document.getElementById('editMemberPosition').value.split('|');
     position_order=parseInt(pv[0])||5;
     position_label=pv[1]||'สมาชิก';
   }
-
-  // photo — keep existing if not changed
   let photo_url=null;
   if(editingMemberId){
     const existing=membersData.find(x=>x.id===editingMemberId);
@@ -1058,33 +1119,19 @@ async function saveMember(){
     try{ photo_url=await uploadCloudinary(memberPhotoFile); }
     catch(e){ return toast('อัปโหลดรูปล้มเหลว','error'); }
   }
-
-  // คอลัมน์ที่แน่ใจว่ามีอยู่ในตาราง members
-  const corePayload={
-    name,
-    role:document.getElementById('editMemberRole').value,
-    phone:document.getElementById('editMemberPhone').value,
-    photo_url
-  };
-  // คอลัมน์เพิ่มเติมที่อาจมีหรือไม่มี (ต้องรัน ALTER TABLE ใน Supabase)
-  const basePayload={...corePayload,
-    village:type==='asom'?(parseInt(document.getElementById('editMemberVillage').value)||null):null,
-    type
-  };
+  const corePayload={name,role:document.getElementById('editMemberRole').value,phone:document.getElementById('editMemberPhone').value,photo_url};
+  const basePayload={...corePayload,village:type==='asom'?(parseInt(document.getElementById('editMemberVillage').value)||null):null,type};
   const fullPayload={...basePayload, birthdate, position_order, position_label};
-
   const btn=document.querySelector('#modalMemberEdit .btn-primary');
   if(btn){btn.disabled=true;btn.textContent='กำลังบันทึก...';}
   try{
     let result;
     let showSuccessToast=true;
-    // ลองบันทึกด้วย payload เต็ม (รวม birthdate/position_order/position_label)
     if(editingMemberId){
       result=await sb.from('members').update(fullPayload).eq('id',editingMemberId);
     } else {
       result=await sb.from('members').insert(fullPayload);
     }
-    // fallback แบบลดหลั่น ถ้ามี column error
     const fallbacks=[basePayload, corePayload];
     for(const fb of fallbacks){
       if(!result.error || !(result.error.message||'').toLowerCase().includes('column')) break;
@@ -1095,7 +1142,7 @@ async function saveMember(){
       }
       if(!result.error){
         showSuccessToast=false;
-        toast('⚠️ บันทึกสำเร็จ — กรุณารัน SQL ใน Supabase เพื่อเพิ่มคอลัมน์ที่ขาด (type, village, birthdate, position_order, position_label)');
+        toast('⚠️ บันทึกสำเร็จ — กรุณารัน SQL ใน Supabase เพื่อเพิ่มคอลัมน์ที่ขาด');
       }
     }
     if(result.error) throw result.error;
@@ -1113,86 +1160,6 @@ function previewMemberPhoto(inp){
   const f=inp.files[0]; if(!f)return;
   memberPhotoFile=f;
   document.getElementById('editMemberPhotoPreview').innerHTML=`<img src="${URL.createObjectURL(f)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:8px;display:block" />`;
-}
-
-function renderMembers(){
-  const list = membersData.filter(m=>(m.type||'asom')===memberTab);
-  const el = document.getElementById('memberGrid');
-  if(list.length===0){
-    const total = membersData.length;
-    const hint = total > 0
-      ? `<p style="font-size:12px;color:var(--gray-mid);margin-top:6px">โหลดมา ${total} รายการ แต่ไม่มีประเภท "${memberTab}" — รัน SQL: <code style="background:#f0f4f2;padding:2px 6px;border-radius:4px">UPDATE members SET type='asom' WHERE type IS NULL;</code></p>`
-      : `<p style="font-size:12px;color:var(--gray-mid);margin-top:6px">ยังไม่มีสมาชิกในระบบ กด ➕ เพิ่มสมาชิก</p>`;
-    el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--gray-mid)"><div style="font-size:48px;margin-bottom:12px">${memberTab==='medical'?'👨‍⚕️':'🌿'}</div><p>ยังไม่มีข้อมูล</p>${hint}</div>`;
-    return;
-  }
-  if(memberTab==='medical'){
-    // แสดงเรียงลำดับ order_num
-    const sorted = [...list].sort((a,b)=>(a.order_num||999)-(b.order_num||999));
-    el.innerHTML=`<div class="medical-list">${sorted.map((m,i)=>medicalCard(m,i+1)).join('')}</div>`;
-  } else {
-    // ผังองค์กรแยกหมู่
-    const VILLAGE_ORDER=[8,9,11,13,14,16];
-    const villages=[...new Set(list.map(m=>parseInt(m.village)).filter(Boolean))].sort((a,b)=>VILLAGE_ORDER.indexOf(a)-VILLAGE_ORDER.indexOf(b));
-    const TIERS=[
-      {order:1,label:'ประธาน อสม.',cls:'tier-1',badge:'badge-tier-1'},
-      {order:2,label:'รองประธาน อสม.',cls:'tier-2',badge:'badge-tier-2'},
-      {order:3,label:'เลขานุการ อสม.',cls:'tier-3',badge:'badge-tier-3'},
-      {order:4,label:'เหรัญญิก อสม.',cls:'tier-4',badge:'badge-tier-4'},
-      {order:5,label:'สมาชิก อสม.',cls:'tier-5',badge:'badge-tier-5'},
-    ];
-    el.innerHTML = villages.map(v=>{
-      const vMembers = list.filter(m=>parseInt(m.village)===v).sort((a,b)=>(a.position_order||5)-(b.position_order||5));
-      const tiersHtml = TIERS.map(t=>{
-        const members = vMembers.filter(m=>(m.position_order||5)===t.order);
-        if(members.length===0) return '';
-        return `<div class="org-tier">
-          <div class="org-tier-label">${t.label}</div>
-          <div class="org-row">${members.map(m=>orgCard(m,t)).join('')}</div>
-        </div>`;
-      }).join('');
-      return `<div class="org-village-block">
-        <div class="org-village-header">🏘️ หมู่ ${v} <span style="font-size:13px;color:var(--gray-mid);font-weight:400">(${vMembers.length} คน)</span></div>
-        ${tiersHtml}
-      </div>`;
-    }).join('');
-  }
-}
-
-function medicalCard(m, idx){
-  const img = m.photo_url
-    ? `<img src="${m.photo_url}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--green-light);margin:0 auto 8px;display:block" />`
-    : `<div style="width:64px;height:64px;border-radius:50%;background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 8px">👨‍⚕️</div>`;
-  const ageStr = m.birthdate ? (()=>{ const a=calcAge(m.birthdate); return `<div style="font-size:10px;color:var(--gray-mid)">${a.y} ปี</div>`; })() : '';
-  const editBtn = isAdmin ? `<div style="display:flex;gap:4px;justify-content:center;margin-top:8px">
-    <button class="btn-edit" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();openEditMember('${m.id}')">✏️</button>
-    <button class="btn-danger" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();deleteMember('${m.id}')">ลบ</button></div>` : '';
-  return `<div class="medical-card" style="position:relative" onclick="showMemberDetail('${m.id}')">
-    <div class="med-order">${idx}</div>
-    ${img}
-    <div style="font-weight:700;font-size:12px;color:var(--text-main);margin-bottom:2px">${m.name}</div>
-    <div style="font-size:11px;color:var(--gray-mid);margin-bottom:2px">${m.role||''}</div>
-    ${ageStr}
-    <div style="font-size:12px;color:var(--green-dark);font-weight:700">${m.phone||''}</div>
-    ${editBtn}</div>`;
-}
-
-function orgCard(m, tier){
-  const img = m.photo_url
-    ? `<img class="org-photo" src="${m.photo_url}" />`
-    : `<div class="org-photo">${'🌿'}</div>`;
-  const ageStr = m.birthdate ? (()=>{ const a=calcAge(m.birthdate); return `<div class="org-age">${a.y} ปี</div>`; })() : '';
-  const editBtn = isAdmin ? `<div style="display:flex;gap:4px;justify-content:center;margin-top:6px">
-    <button class="btn-edit" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();openEditMember('${m.id}')">✏️</button>
-    <button class="btn-danger" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();deleteMember('${m.id}')">ลบ</button></div>` : '';
-  return `<div class="org-card ${tier.cls}" onclick="showMemberDetail('${m.id}')">
-    <div class="org-pos-badge ${tier.badge}">${m.position_label||'สมาชิก'}</div>
-    ${img}
-    <div class="org-name">${m.name}</div>
-    ${m.role?`<div style="font-size:10px;color:var(--gray-mid);margin-bottom:2px">${m.role}</div>`:''}
-    ${ageStr}
-    <div class="org-phone">${m.phone||''}</div>
-    ${editBtn}</div>`;
 }
 
 async function deleteMember(id){
@@ -1314,7 +1281,7 @@ function filterAttendeeList(){
   const shown=membersData.filter(m=>m.name.toLowerCase().includes(q));
   if(shown.length===0){ dd.style.display='none'; return; }
   dd.style.display='block';
-  dd.innerHTML=shown.map(m=>`<div onclick="addAttendee('${m.name.replace(/'/g,"\\'")}','${m.id}')" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--green-pale);font-size:13px;display:flex;justify-content:space-between" onmouseover="this.style.background='var(--green-pale)'" onmouseout="this.style.background='white'"><span>${m.name}</span><span style="color:var(--gray-mid);font-size:11px">${m.role||''} ${m.village?'หมู่ '+m.village:''}</span></div>`).join('');
+  dd.innerHTML=shown.map(m=>`<div onclick="addAttendee('${m.name.replace(/'/g,"\\'")}')" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--green-pale);font-size:13px;display:flex;justify-content:space-between" onmouseover="this.style.background='var(--green-pale)'" onmouseout="this.style.background='white'"><span>${m.name}</span><span style="color:var(--gray-mid);font-size:11px">${m.role||''} ${m.village?'หมู่ '+m.village:''}</span></div>`).join('');
 }
 async function addAttendee(name){
   const actId=document.getElementById('actOrderSelect').value; if(!actId)return;
@@ -1365,24 +1332,27 @@ function openNewsModal(){ editingNewsId=null; newsMemberFiles=[]; newsMemberExis
 async function openEditNews(id){ await getAllNews(); const p=allNewsData.find(x=>x.id===id); if(!p)return; editingNewsId=id; newsMemberFiles=[]; newsMemberExisting=p.media_urls||[]; document.getElementById('newsModalTitle').textContent='✏️ แก้ไขข่าวสาร'; document.getElementById('newsTitle').value=p.title; document.getElementById('newsDate').value=p.date||''; document.getElementById('newsDesc').value=p.description||''; document.getElementById('newsYoutube').value=p.youtube_url||''; renderNewsMediaPreview(); openModal('modalNews'); }
 function renderNewsMediaPreview(){
   document.getElementById('newsMediaPreview').innerHTML=[
-    ...newsMemberExisting.map((u,i)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1.5px solid var(--green-light)"><img src="${u}" style="width:100%;height:100%;object-fit:cover" /><button onclick="newsMemberExisting.splice(${i},1);renderNewsMediaPreview()" style="position:absolute;top:2px;right:2px;background:rgba(229,62,62,.9);color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-weight:700">×</button></div>`),
-    ...newsMemberFiles.map((f,i)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1.5px solid var(--gold)"><img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover" /><button onclick="newsMemberFiles.splice(${i},1);renderNewsMediaPreview()" style="position:absolute;top:2px;right:2px;background:rgba(229,62,62,.9);color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-weight:700">×</button></div>`)
+    ...newsMemberExisting.map((u,i)=>`<div style="position:relative"><img src="${u}" style="width:80px;height:80px;object-fit:cover;border-radius:8px" /><button onclick="newsMemberExisting.splice(${i},1);renderNewsMediaPreview()" style="position:absolute;top:2px;right:2px;background:#c62828;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px">×</button></div>`),
+    ...newsMemberFiles.map((f,i)=>`<div style="position:relative"><img src="${URL.createObjectURL(f)}" style="width:80px;height:80px;object-fit:cover;border-radius:8px" /><button onclick="newsMemberFiles.splice(${i},1);renderNewsMediaPreview()" style="position:absolute;top:2px;right:2px;background:#c62828;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px">×</button></div>`)
   ].join('');
 }
-function addNewsMedia(inp){ const files=Array.from(inp.files); newsMemberFiles=[...newsMemberFiles,...files]; renderNewsMediaPreview(); inp.value=''; }
+function addNewsMedia(inp){
+  Array.from(inp.files).forEach(f=>newsMemberFiles.push(f));
+  renderNewsMediaPreview(); inp.value='';
+}
 async function saveNews(){
   const title=document.getElementById('newsTitle').value.trim();
-  if(!title)return toast('กรุณาใส่หัวข้อ','error');
+  if(!title)return toast('กรุณากรอกหัวข้อ','error');
   const btn=document.getElementById('newsSubmitBtn'); btn.disabled=true; btn.textContent='กำลังบันทึก...';
   try{
-    let uploaded=[];
-    if(newsMemberFiles.length){ toast('กำลังอัปโหลดรูป...'); uploaded=await Promise.all(newsMemberFiles.map(uploadCloudinary)); }
-    const media=[...newsMemberExisting,...uploaded];
-    const payload={title,date:document.getElementById('newsDate').value,description:document.getElementById('newsDesc').value,youtube_url:document.getElementById('newsYoutube').value,media_urls:media};
+    let uploadedUrls=[];
+    if(newsMemberFiles.length){ toast('กำลังอัปโหลดรูปภาพ...'); uploadedUrls=await Promise.all(newsMemberFiles.map(f=>uploadCloudinary(f))); }
+    const media_urls=[...newsMemberExisting,...uploadedUrls];
+    const payload={title,date:document.getElementById('newsDate').value,description:document.getElementById('newsDesc').value,youtube_url:document.getElementById('newsYoutube').value,media_urls};
     if(editingNewsId) await sb.from('activity_posts').update(payload).eq('id',editingNewsId);
     else await sb.from('activity_posts').insert(payload);
     closeModal('modalNews'); toast(editingNewsId?'แก้ไขเรียบร้อย':'เพิ่มข่าวสารเรียบร้อย'); loadNews();
-  }catch(e){ toast('เกิดข้อผิดพลาด','error'); }
+  } catch(e){ toast('เกิดข้อผิดพลาด','error'); }
   btn.disabled=false; btn.textContent='💾 บันทึก';
 }
 async function deleteNews(id){ if(!confirm('ลบข่าวสารนี้?'))return; await sb.from('activity_posts').delete().eq('id',id); toast('ลบเรียบร้อย'); loadNews(); }
@@ -1398,9 +1368,13 @@ function initHealthFilters(){
   const hy=document.getElementById('hYear'); if(!hy.innerHTML) hy.innerHTML=YEARS_LIST.map(y=>`<option value="${y}">${y}</option>`).join('');
   const hm=document.getElementById('hMonth'); if(!hm.innerHTML) MONTHS_TH.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; hm.appendChild(o); });
   const sc=document.getElementById('hScreener');
-  if(sc.options.length<=1){ const asom=membersData.filter(m=>m.type==='asom'); asom.forEach(m=>{ const o=document.createElement('option'); o.value=m.name; o.textContent=m.name+(m.village?' (หมู่ '+m.village+')':''); sc.appendChild(o); }); }
+  if(sc.options.length<=1){
+    const asom=membersData.filter(m=>m.type==='asom');
+    asom.forEach(m=>{ const o=document.createElement('option'); o.value=m.name; o.textContent=m.name+(m.village?' (หมู่ '+m.village+')':''); sc.appendChild(o); });
+  }
   const dashY=document.getElementById('dashYear'); if(!dashY.innerHTML) dashY.innerHTML=YEARS_LIST.map(y=>`<option value="${y}">${y}</option>`).join('');
 }
+
 async function loadHealth(){
   const y=document.getElementById('filterHealthYear').value;
   const m=document.getElementById('filterHealthMonth').value;
@@ -1408,6 +1382,7 @@ async function loadHealth(){
   if(m>0) q=q.eq('month',m);
   const {data}=await q; healthData=data||[]; renderHealthTable();
 }
+
 function renderHealthTable(){
   const q=document.getElementById('filterHealthSearch').value;
   const list=healthData.filter(r=>!q||r.full_name?.includes(q)||r.id_card?.includes(q)||r.screener_name?.includes(q));
@@ -1419,46 +1394,251 @@ function renderHealthTable(){
     <div class="sum-card" style="border-top-color:#c62828"><h3>ความดันสูง</h3><div class="sum-num" style="color:#c62828">${bpAbnormal}</div><div class="sum-unit">ราย</div></div>
     <div class="sum-card" style="border-top-color:#f57f17"><h3>เสี่ยง/เบาหวาน</h3><div class="sum-num" style="color:#f57f17">${sugarAbnormal}</div><div class="sum-unit">ราย</div></div>`;
   document.getElementById('healthTable').innerHTML=list.length===0
-    ? '<tr><td colspan="32" style="text-align:center;padding:40px;color:var(--gray-mid)">ไม่มีข้อมูล</td></tr>'
+    ? '<tr><td colspan="33" style="text-align:center;padding:40px;color:var(--gray-mid)">ไม่มีข้อมูล</td></tr>'
     : list.map(r=>{
-        const bc=bmiCat(r.bmi); const bp=bpColor(r.bp1_sys,r.bp1_dia); const sg=sugarColor(r.blood_sugar);
-        return `<tr><td>${r.year}</td><td>${MONTHS_TH[(r.month||1)-1]}</td><td>${r.screen_date||''} ${r.screen_time||''}</td><td>${r.screener_name||''}</td><td>${r.village||''}</td><td>${r.full_name}</td><td>${r.birthdate||''}</td><td>${r.age_years||0}ปี ${r.age_months||0}ด ${r.age_days||0}ว</td><td>${r.id_card||''}</td><td>${r.phone||''}</td><td>${r.weight||0} กก.</td><td>${r.height||0} ซม.</td><td><span class="bmi-badge ${bc.cls}">${r.bmi||0} (${r.bmi_category||''})</span></td><td>${r.waist||0} ซม.</td><td>${r.education||''}</td><td>${r.occupation||''}</td><td>${r.marital_status||''}</td><td>${r.bp1_sys||0}/${r.bp1_dia||0}</td><td>${r.bp2_sys||0}/${r.bp2_dia||0}</td><td><span class="${bp.cls}">${r.bp_color||''}</span></td><td>${r.bp_group||''}</td><td>${r.blood_sugar||0} mg/dL</td><td><span class="${sg.cls}">${r.sugar_color||''}</span></td><td>${r.sugar_group||''}</td><td>${r.smoke||''}</td><td>${r.smoke==='ไม่สูบ'?'-':r.smoke_per_day||0}</td><td>${r.smoke==='ไม่สูบ'?'-':r.smoke_type||''}</td><td>${r.smoke==='ไม่สูบ'?'-':r.smoke_duration||''}</td><td>${r.alcohol||''}</td><td>${r.alcohol==='ไม่ดื่ม'?'-':r.alcohol_per_week||''}</td><td>${r.depression1||''}</td><td><button class="btn-edit" onclick="openEditHealth('${r.id}')">แก้ไข</button><button class="btn-danger" style="margin-top:4px" onclick="deleteHealth('${r.id}')">ลบ</button></td></tr>`;
+        const bc=bmiCat(r.bmi); const bp=bpColor(r.bp_avg_sys,r.bp_avg_dia); const sg=sugarColor(r.blood_sugar);
+        return `<tr>
+          <td>${r.year}</td><td>${MONTHS_TH[(r.month||1)-1]}</td>
+          <td>${r.screen_date||''} ${r.screen_time||''}</td>
+          <td>${r.screener_name||''}</td><td>${r.village||''}</td><td>${r.full_name}</td>
+          <td>${r.birthdate||''}</td><td>${r.age_years||0}ปี ${r.age_months||0}ด</td>
+          <td>${r.id_card||''}</td><td>${r.phone||''}</td>
+          <td>${r.weight||0} กก.</td><td>${r.height||0} ซม.</td>
+          <td><span class="bmi-badge ${bc.cls}">${r.bmi||0} (${r.bmi_category||''})</span></td>
+          <td>${r.waist||0} ซม.</td><td>${r.education||''}</td><td>${r.occupation||''}</td><td>${r.marital_status||''}</td>
+          <td>${r.bp1_sys||'-'}/${r.bp1_dia||'-'}/${r.bp1_pulse||'-'}</td>
+          <td>${r.bp2_sys||'-'}/${r.bp2_dia||'-'}/${r.bp2_pulse||'-'}</td>
+          <td>${r.bp3_sys||'-'}/${r.bp3_dia||'-'}/${r.bp3_pulse||'-'}</td>
+          <td><span class="${bp.cls}">${r.bp_avg_sys||'-'}/${r.bp_avg_dia||'-'}</span></td>
+          <td>${r.bp_group||''}</td>
+          <td>${r.blood_sugar||0} mg/dL</td>
+          <td><span class="${sg.cls}">${r.sugar_color||''}</span></td><td>${r.sugar_group||''}</td>
+          <td>${r.smoke||''}</td>
+          <td>${r.smoke==='ไม่สูบ'?'-':r.smoke_per_day||0}</td>
+          <td>${r.smoke==='ไม่สูบ'?'-':r.smoke_type||''}</td>
+          <td>${r.smoke==='ไม่สูบ'?'-':r.smoke_duration||''}</td>
+          <td>${r.alcohol||''}</td>
+          <td>${r.alcohol==='ไม่ดื่ม'?'-':r.alcohol_per_week||''}</td>
+          <td>${r.depression1||''}</td>
+          <td>
+            <button class="btn-edit" onclick="openEditHealth('${r.id}')">แก้ไข</button>
+            <button class="btn-danger" style="margin-top:4px" onclick="deleteHealth('${r.id}')">ลบ</button>
+          </td>
+        </tr>`;
       }).join('');
 }
-function openHealthForm(){ editingHealthId=null; document.getElementById('healthFormTitle').textContent='🩺 บันทึกการคัดกรองสุขภาพ'; const now=new Date(); document.getElementById('hDate').value=now.toISOString().substring(0,10); document.getElementById('hTime').value=now.toTimeString().substring(0,5); document.getElementById('hYear').value=now.getFullYear()+543; document.getElementById('hMonth').value=now.getMonth()+1; ['hName','hBirth','hIdCard','hPhone','hOccupy','hAddress','hSmokeQty','hSmokeType','hSmokeDur','hAlcoholQty'].forEach(id=>document.getElementById(id).value=''); ['hVillage'].forEach(id=>document.getElementById(id).value=''); document.getElementById('hEdu').value=''; document.getElementById('hMarital').value=''; document.getElementById('hScreener').value=''; document.getElementById('hSmoke').value='ไม่สูบ'; document.getElementById('hAlcohol').value='ไม่ดื่ม'; document.getElementById('hDepression').value=''; document.getElementById('hBmiDisplay').value=''; document.getElementById('hBpResult').innerHTML=''; document.getElementById('hSugarResult').innerHTML=''; toggleSmokeFields(); toggleAlcoholFields(); openModal('modalHealthForm'); }
-async function openEditHealth(id){ const r=healthData.find(x=>x.id===id); if(!r)return; editingHealthId=id; openHealthForm(); ['hName','hIdCard','hPhone','hOccupy','hAddress'].forEach(k=>{ const fid={hName:'full_name',hIdCard:'id_card',hPhone:'phone',hOccupy:'occupation',hAddress:'address'}[k]; document.getElementById(k).value=r[fid]||''; }); document.getElementById('hVillage').value=r.village||''; document.getElementById('hYear').value=r.year; document.getElementById('hMonth').value=r.month; document.getElementById('hDate').value=r.screen_date||''; document.getElementById('hTime').value=r.screen_time||''; document.getElementById('hScreener').value=r.screener_name||''; document.getElementById('hBirth').value=r.birthdate||''; document.getElementById('hEdu').value=r.education||''; document.getElementById('hMarital').value=r.marital_status||''; document.getElementById('hWeight').value=r.weight||''; document.getElementById('hHeight').value=r.height||''; calcBmiAuto(); document.getElementById('hWaist').value=r.waist||''; document.getElementById('hBp1s').value=r.bp1_sys||''; document.getElementById('hBp1d').value=r.bp1_dia||''; document.getElementById('hBp2s').value=r.bp2_sys||''; document.getElementById('hBp2d').value=r.bp2_dia||''; calcBpAuto(); document.getElementById('hSugar').value=r.blood_sugar||''; calcSugarAuto(); document.getElementById('hSmoke').value=r.smoke||'ไม่สูบ'; toggleSmokeFields(); document.getElementById('hSmokeQty').value=r.smoke_per_day||''; document.getElementById('hSmokeType').value=r.smoke_type||''; document.getElementById('hSmokeDur').value=r.smoke_duration||''; document.getElementById('hAlcohol').value=r.alcohol||'ไม่ดื่ม'; toggleAlcoholFields(); document.getElementById('hAlcoholQty').value=r.alcohol_per_week||''; document.getElementById('hDepression').value=r.depression1||''; }
-function calcAgeAuto(){ const b=document.getElementById('hBirth').value; if(!b)return; const a=calcAge(b); const el=document.getElementById('hAgeDisplay'); el.textContent=`อายุ ${a.y} ปี ${a.m} เดือน ${a.d} วัน`; el.style.display='inline-block'; }
-function calcBmiAuto(){ const w=parseFloat(document.getElementById('hWeight').value), h=parseFloat(document.getElementById('hHeight').value); const bmi=calcBMI(w,h); const cat=bmiCat(bmi); document.getElementById('hBmiDisplay').value=bmi>0?`${bmi} (${cat.label})`:''; }
-function calcBpAuto(){ const s=parseInt(document.getElementById('hBp1s').value), d=parseInt(document.getElementById('hBp1d').value); const c=bpColor(s,d); document.getElementById('hBpResult').innerHTML=c.cls?`<span class="${c.cls}" style="font-size:13px;padding:4px 12px">${c.label}</span>`:''; }
-function calcSugarAuto(){ const v=parseInt(document.getElementById('hSugar').value); const c=sugarColor(v); document.getElementById('hSugarResult').innerHTML=c.cls?`<span class="${c.cls}" style="font-size:13px;padding:4px 12px">${c.label}</span>`:''; }
+
+function openHealthForm(){
+  editingHealthId=null;
+  document.getElementById('healthFormTitle').textContent='🩺 บันทึกการคัดกรองสุขภาพ';
+  const now=new Date();
+  document.getElementById('hDate').value=now.toISOString().substring(0,10);
+  document.getElementById('hTime').value=now.toTimeString().substring(0,5);
+  document.getElementById('hYear').value=now.getFullYear()+543;
+  document.getElementById('hMonth').value=now.getMonth()+1;
+  // clear patient name fields
+  ['hPrefix','hScreener','hEdu','hOccupy','hMarital','hSmoke','hAlcohol','hDepression'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('hSmoke').value='ไม่สูบ';
+  document.getElementById('hAlcohol').value='ไม่ดื่ม';
+  ['hFirstName','hLastName','hBirth','hIdCard','hPhone','hAddress','hSmokeQty','hSmokeType','hSmokeDur','hAlcoholQty'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('hVillage').value='';
+  document.getElementById('hBmiDisplay').value='';
+  document.getElementById('hBpResult').innerHTML='';
+  document.getElementById('hSugarResult').innerHTML='';
+  document.getElementById('hAgeDisplay').style.display='none';
+  // clear BP fields
+  ['hBp1s','hBp1d','hBp1p','hBp2s','hBp2d','hBp2p','hBp3s','hBp3d','hBp3p','hWeight','hHeight','hWaist','hSugar'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  toggleSmokeFields();
+  toggleAlcoholFields();
+  openModal('modalHealthForm');
+}
+
+async function openEditHealth(id){
+  const r=healthData.find(x=>x.id===id); if(!r)return;
+  editingHealthId=id;
+  openHealthForm();
+  // parse name back to prefix/first/last
+  const prefixes=['นาย','นาง','นางสาว','เด็กชาย','เด็กหญิง','ดร.','นพ.','พญ.'];
+  let prefix='', firstName='', lastName='', fullName=r.full_name||'';
+  const fp=prefixes.find(p=>fullName.startsWith(p));
+  if(fp){ prefix=fp; fullName=fullName.slice(fp.length).trim(); }
+  const parts=fullName.split(' ');
+  firstName=parts[0]||''; lastName=parts.slice(1).join(' ')||'';
+  document.getElementById('hPrefix').value=prefix;
+  document.getElementById('hFirstName').value=firstName;
+  document.getElementById('hLastName').value=lastName;
+  document.getElementById('hIdCard').value=r.id_card||'';
+  document.getElementById('hPhone').value=r.phone||'';
+  document.getElementById('hOccupy').value=r.occupation||'';
+  document.getElementById('hAddress').value=r.address||'';
+  document.getElementById('hVillage').value=r.village||'';
+  document.getElementById('hYear').value=r.year;
+  document.getElementById('hMonth').value=r.month;
+  document.getElementById('hDate').value=r.screen_date||'';
+  document.getElementById('hTime').value=r.screen_time||'';
+  document.getElementById('hScreener').value=r.screener_name||'';
+  document.getElementById('hBirth').value=r.birthdate||'';
+  if(r.birthdate) calcAgeAuto();
+  document.getElementById('hEdu').value=r.education||'';
+  document.getElementById('hMarital').value=r.marital_status||'';
+  document.getElementById('hWeight').value=r.weight||'';
+  document.getElementById('hHeight').value=r.height||'';
+  calcBmiAuto();
+  document.getElementById('hWaist').value=r.waist||'';
+  document.getElementById('hBp1s').value=r.bp1_sys||'';
+  document.getElementById('hBp1d').value=r.bp1_dia||'';
+  document.getElementById('hBp1p').value=r.bp1_pulse||'';
+  document.getElementById('hBp2s').value=r.bp2_sys||'';
+  document.getElementById('hBp2d').value=r.bp2_dia||'';
+  document.getElementById('hBp2p').value=r.bp2_pulse||'';
+  document.getElementById('hBp3s').value=r.bp3_sys||'';
+  document.getElementById('hBp3d').value=r.bp3_dia||'';
+  document.getElementById('hBp3p').value=r.bp3_pulse||'';
+  calcBpAuto();
+  document.getElementById('hSugar').value=r.blood_sugar||'';
+  calcSugarAuto();
+  document.getElementById('hSmoke').value=r.smoke||'ไม่สูบ';
+  toggleSmokeFields();
+  document.getElementById('hSmokeQty').value=r.smoke_per_day||'';
+  document.getElementById('hSmokeType').value=r.smoke_type||'';
+  document.getElementById('hSmokeDur').value=r.smoke_duration||'';
+  document.getElementById('hAlcohol').value=r.alcohol||'ไม่ดื่ม';
+  toggleAlcoholFields();
+  document.getElementById('hAlcoholQty').value=r.alcohol_per_week||'';
+  document.getElementById('hDepression').value=r.depression1||'';
+}
+
+function calcAgeAuto(){
+  const b=document.getElementById('hBirth').value; if(!b)return;
+  const a=calcAge(b);
+  const el=document.getElementById('hAgeDisplay');
+  el.textContent=`อายุ ${a.y} ปี ${a.m} เดือน ${a.d} วัน`;
+  el.style.display='block';
+}
+
+function calcBmiAuto(){
+  const w=parseFloat(document.getElementById('hWeight').value), h=parseFloat(document.getElementById('hHeight').value);
+  const bmi=calcBMI(w,h); const cat=bmiCat(bmi);
+  document.getElementById('hBmiDisplay').value=bmi>0?`${bmi} (${cat.label})`:'';
+}
+
+function calcBpAuto(){
+  // Collect all readings that have both SYS and DIA
+  const readings=[];
+  [[document.getElementById('hBp1s'),document.getElementById('hBp1d')],
+   [document.getElementById('hBp2s'),document.getElementById('hBp2d')],
+   [document.getElementById('hBp3s'),document.getElementById('hBp3d')]].forEach(([se,de])=>{
+    const s=parseInt(se.value), d=parseInt(de.value);
+    if(s>0&&d>0) readings.push({s,d});
+  });
+  if(readings.length===0){ document.getElementById('hBpResult').innerHTML=''; return; }
+  const avgS=Math.round(readings.reduce((a,r)=>a+r.s,0)/readings.length);
+  const avgD=Math.round(readings.reduce((a,r)=>a+r.d,0)/readings.length);
+  const c=bpColor(avgS,avgD);
+  document.getElementById('hBpResult').innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span class="${c.cls}" style="font-size:13px;padding:4px 12px">${c.label}</span>
+    <span style="font-size:12px;color:var(--gray-mid)">ค่าเฉลี่ย: ${avgS}/${avgD} mmHg (จาก ${readings.length} ครั้ง)</span>
+  </div>`;
+}
+
+function calcSugarAuto(){
+  const v=parseInt(document.getElementById('hSugar').value);
+  const c=sugarColor(v);
+  document.getElementById('hSugarResult').innerHTML=c.cls?`<span class="${c.cls}" style="font-size:13px;padding:4px 12px">${c.label}</span>`:'';
+}
+
 function toggleSmokeFields(){ document.getElementById('hSmokeFields').style.display=document.getElementById('hSmoke').value==='ไม่สูบ'?'none':'block'; }
 function toggleAlcoholFields(){ document.getElementById('hAlcoholFields').style.display=document.getElementById('hAlcohol').value==='ไม่ดื่ม'?'none':'block'; }
+
 async function saveHealth(){
-  const name=document.getElementById('hName').value.trim(), screener=document.getElementById('hScreener').value;
-  if(!name)return toast('กรุณากรอกชื่อ-สกุล','error');
-  if(!screener)return toast('กรุณาเลือก อสม.ผู้คัดกรอง','error');
+  const prefix=document.getElementById('hPrefix').value;
+  const firstName=document.getElementById('hFirstName').value.trim();
+  const lastName=document.getElementById('hLastName').value.trim();
+  if(!firstName) return toast('กรุณากรอกชื่อ','error');
+  const full_name=[prefix,firstName,lastName].filter(Boolean).join(' ');
+  const screener=document.getElementById('hScreener').value;
+  if(!screener) return toast('กรุณาเลือก อสม.ผู้คัดกรอง','error');
   const w=parseFloat(document.getElementById('hWeight').value)||0, h=parseFloat(document.getElementById('hHeight').value)||0;
   const bmi=calcBMI(w,h); const bmiC=bmiCat(bmi);
-  const bp1s=parseInt(document.getElementById('hBp1s').value)||0, bp1d=parseInt(document.getElementById('hBp1d').value)||0;
-  const bpC=bpColor(bp1s,bp1d); const bpG=bpGroup(bp1s,bp1d);
-  const sug=parseInt(document.getElementById('hSugar').value)||0; const sgC=sugarColor(sug); const sgG=sugarGroup(sug);
+  // BP averages
+  const bp1s=parseInt(document.getElementById('hBp1s').value)||0;
+  const bp1d=parseInt(document.getElementById('hBp1d').value)||0;
+  const bp1p=parseInt(document.getElementById('hBp1p').value)||0;
+  const bp2s=parseInt(document.getElementById('hBp2s').value)||0;
+  const bp2d=parseInt(document.getElementById('hBp2d').value)||0;
+  const bp2p=parseInt(document.getElementById('hBp2p').value)||0;
+  const bp3s=parseInt(document.getElementById('hBp3s').value)||0;
+  const bp3d=parseInt(document.getElementById('hBp3d').value)||0;
+  const bp3p=parseInt(document.getElementById('hBp3p').value)||0;
+  const sysVals=[bp1s,bp2s,bp3s].filter(v=>v>0);
+  const diaVals=[bp1d,bp2d,bp3d].filter(v=>v>0);
+  const avgS=sysVals.length?Math.round(sysVals.reduce((a,v)=>a+v,0)/sysVals.length):0;
+  const avgD=diaVals.length?Math.round(diaVals.reduce((a,v)=>a+v,0)/diaVals.length):0;
+  const bpC=bpColor(avgS,avgD); const bpG=bpGroup(avgS,avgD);
+  const sug=parseInt(document.getElementById('hSugar').value)||0;
+  const sgC=sugarColor(sug); const sgG=sugarGroup(sug);
   const birth=document.getElementById('hBirth').value; const age=calcAge(birth);
   const smoke=document.getElementById('hSmoke').value;
   const alcohol=document.getElementById('hAlcohol').value;
-  const payload={year:parseInt(document.getElementById('hYear').value),month:parseInt(document.getElementById('hMonth').value),screen_date:document.getElementById('hDate').value,screen_time:document.getElementById('hTime').value,screener_name:screener,village:parseInt(document.getElementById('hVillage').value)||null,address:document.getElementById('hAddress').value,full_name:name,birthdate:birth,age_years:age.y,age_months:age.m,age_days:age.d,id_card:document.getElementById('hIdCard').value,phone:document.getElementById('hPhone').value,weight:w,height:h,bmi,bmi_category:bmiC.label,waist:parseFloat(document.getElementById('hWaist').value)||0,education:document.getElementById('hEdu').value,occupation:document.getElementById('hOccupy').value,marital_status:document.getElementById('hMarital').value,bp1_sys:bp1s,bp1_dia:bp1d,bp2_sys:parseInt(document.getElementById('hBp2s').value)||0,bp2_dia:parseInt(document.getElementById('hBp2d').value)||0,bp_color:bpC.label,bp_group:bpG,blood_sugar:sug,sugar_color:sgC.label,sugar_group:sgG,smoke,smoke_per_day:smoke==='ไม่สูบ'?0:parseInt(document.getElementById('hSmokeQty').value)||0,smoke_type:smoke==='ไม่สูบ'?'':document.getElementById('hSmokeType').value,smoke_duration:smoke==='ไม่สูบ'?'':document.getElementById('hSmokeDur').value,alcohol,alcohol_per_week:alcohol==='ไม่ดื่ม'?'':document.getElementById('hAlcoholQty').value,depression1:document.getElementById('hDepression').value};
+  const payload={
+    year:parseInt(document.getElementById('hYear').value),
+    month:parseInt(document.getElementById('hMonth').value),
+    screen_date:document.getElementById('hDate').value,
+    screen_time:document.getElementById('hTime').value,
+    screener_name:screener,
+    village:parseInt(document.getElementById('hVillage').value)||null,
+    address:document.getElementById('hAddress').value,
+    full_name,
+    birthdate:birth,
+    age_years:age.y, age_months:age.m, age_days:age.d,
+    id_card:document.getElementById('hIdCard').value,
+    phone:document.getElementById('hPhone').value,
+    weight:w, height:h, bmi, bmi_category:bmiC.label,
+    waist:parseFloat(document.getElementById('hWaist').value)||0,
+    education:document.getElementById('hEdu').value,
+    occupation:document.getElementById('hOccupy').value,
+    marital_status:document.getElementById('hMarital').value,
+    bp1_sys:bp1s, bp1_dia:bp1d, bp1_pulse:bp1p,
+    bp2_sys:bp2s, bp2_dia:bp2d, bp2_pulse:bp2p,
+    bp3_sys:bp3s, bp3_dia:bp3d, bp3_pulse:bp3p,
+    bp_avg_sys:avgS, bp_avg_dia:avgD,
+    bp_color:bpC.label, bp_group:bpG,
+    blood_sugar:sug, sugar_color:sgC.label, sugar_group:sgG,
+    smoke,
+    smoke_per_day:smoke==='ไม่สูบ'?0:parseInt(document.getElementById('hSmokeQty').value)||0,
+    smoke_type:smoke==='ไม่สูบ'?'':document.getElementById('hSmokeType').value,
+    smoke_duration:smoke==='ไม่สูบ'?'':document.getElementById('hSmokeDur').value,
+    alcohol,
+    alcohol_per_week:alcohol==='ไม่ดื่ม'?'':document.getElementById('hAlcoholQty').value,
+    depression1:document.getElementById('hDepression').value
+  };
   if(editingHealthId) await sb.from('health_screening').update(payload).eq('id',editingHealthId);
   else await sb.from('health_screening').insert(payload);
-  closeModal('modalHealthForm'); toast(editingHealthId?'แก้ไขเรียบร้อย':'บันทึกเรียบร้อย'); loadHealth();
+  closeModal('modalHealthForm');
+  toast(editingHealthId?'แก้ไขเรียบร้อย':'บันทึกเรียบร้อย');
+  loadHealth();
 }
+
 async function deleteHealth(id){ if(!confirm('ลบข้อมูลนี้?'))return; await sb.from('health_screening').delete().eq('id',id); toast('ลบเรียบร้อย'); loadHealth(); }
 
 // ============================================================
-//  DASHBOARD
+//  DASHBOARD + EXCEL EXPORT
 // ============================================================
 async function loadDashboard(){
   initHealthFilters();
   const y=document.getElementById('dashYear').value||new Date().getFullYear()+543;
-  const [mem,act,fin,scr]=await Promise.all([sb.from('members').select('id,type'),sb.from('activities').select('id'),sb.from('finance').select('type,amount'),sb.from('health_screening').select('bmi_category,bp_group,sugar_group,smoke,alcohol').eq('year',y)]);
+  const [mem,act,fin,scr]=await Promise.all([
+    sb.from('members').select('id,type'),
+    sb.from('activities').select('id'),
+    sb.from('finance').select('type,amount'),
+    sb.from('health_screening').select('bmi_category,bp_group,sugar_group,smoke,alcohol').eq('year',y)
+  ]);
   const md=mem.data||[], fd=fin.data||[], sd=scr.data||[];
   const inc=fd.filter(f=>f.type==='income').reduce((s,f)=>s+f.amount,0);
   const exp=fd.filter(f=>f.type==='expense').reduce((s,f)=>s+f.amount,0);
@@ -1481,6 +1661,21 @@ async function loadDashboard(){
   mkChart('chartBp','doughnut',Object.keys(bpMap),Object.values(bpMap),Object.keys(bpMap).map(k=>BPC[k]||'#9e9e9e'));
   mkChart('chartSugar','pie',Object.keys(sgMap),Object.values(sgMap),Object.keys(sgMap).map(k=>SGC[k]||'#9e9e9e'));
   mkChart('chartSmoke','bar',['สูบบุหรี่','ไม่สูบบุหรี่','ดื่มแอลกอฮอล์','ไม่ดื่ม'],[smoke,noSmoke,drink,noDrink],['#e53935','#2e7d32','#fb8c00','#1565c0']);
+}
+
+async function exportHealthExcel(){
+  const y=document.getElementById('dashYear').value||new Date().getFullYear()+543;
+  toast('กำลังโหลดข้อมูล...');
+  const {data}=await sb.from('health_screening').select('*').eq('year',y).order('screen_date',{ascending:true});
+  if(!data||data.length===0){ toast('ไม่มีข้อมูลสำหรับปีที่เลือก','error'); return; }
+  const headers=['ปี','เดือน','วันที่คัดกรอง','เวลา','อสม.ผู้คัดกรอง','หมู่','ที่อยู่','ชื่อ-สกุล','วันเกิด','อายุ(ปี)','อายุ(เดือน)','เลขบัตร','เบอร์โทร','น้ำหนัก(กก.)','ส่วนสูง(ซม.)','BMI','กลุ่มBMI','รอบเอว(ซม.)','การศึกษา','อาชีพ','สถานภาพ','BP1_SYS','BP1_DIA','BP1_ชีพจร','BP2_SYS','BP2_DIA','BP2_ชีพจร','BP3_SYS','BP3_DIA','BP3_ชีพจร','BP_เฉลี่ยSYS','BP_เฉลี่ยDIA','กลุ่มความดัน','น้ำตาล(mg/dL)','กลุ่มน้ำตาล','สูบบุหรี่','มวน/วัน','ชนิดบุหรี่','ระยะเวลาสูบ','แอลกอฮอล์','วัน/สัปดาห์','ภาวะซึมเศร้า'];
+  const rows=data.map(r=>[r.year,MONTHS_TH[(r.month||1)-1],r.screen_date||'',r.screen_time||'',r.screener_name||'',r.village||'',r.address||'',r.full_name||'',r.birthdate||'',r.age_years||0,r.age_months||0,r.id_card||'',r.phone||'',r.weight||0,r.height||0,r.bmi||0,r.bmi_category||'',r.waist||0,r.education||'',r.occupation||'',r.marital_status||'',r.bp1_sys||0,r.bp1_dia||0,r.bp1_pulse||0,r.bp2_sys||0,r.bp2_dia||0,r.bp2_pulse||0,r.bp3_sys||0,r.bp3_dia||0,r.bp3_pulse||0,r.bp_avg_sys||0,r.bp_avg_dia||0,r.bp_group||'',r.blood_sugar||0,r.sugar_group||'',r.smoke||'',r.smoke_per_day||0,r.smoke_type||'',r.smoke_duration||'',r.alcohol||'',r.alcohol_per_week||'',r.depression1||'']);
+  const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
+  ws['!cols']=headers.map(()=>({wch:18}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,`คัดกรอง_${y}`);
+  XLSX.writeFile(wb,`health_screening_${y}.xlsx`);
+  toast(`Export Excel สำเร็จ (${data.length} ราย)`);
 }
 
 // ============================================================
@@ -1514,6 +1709,8 @@ async function sendChat(){ const txt=document.getElementById('chatInput').value.
 //  INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async ()=>{
+  // check session-only admin (not remembered)
+  if(sessionStorage.getItem('admin_wk_session')==='1') isAdmin=true;
   // marquee
   const {data:mq}=await sb.from('settings').select('*').eq('key','marquee').maybeSingle();
   if(mq?.value) document.getElementById('marqueeText').textContent=mq.value;
