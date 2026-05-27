@@ -212,7 +212,7 @@
 <!-- CONFIG -->
 <script>
   const SUPABASE_URL = 'https://nzdbtqdxgkjiqywrnysh.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56ZGJ0cWR4Z2tqaXF5d3JueXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzU4NDIsImV4cCI6MjA5NDk1MTg0Mn0.SFve344CYSexUqx9EyU4r7MwPr2eMH4c3Q0zh9Vf-vc';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3dWZ5Ymd4cWZyZW9udnpnenZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Nzc4NDMsImV4cCI6MjA5NTM1Mzg0M30.d_0o-Hf4IE9hxO0yzIWcS8vmKWQt4KQdXoyDTb9O8wQ';
   const CLOUDINARY_CLOUD = 'djpdd4h3c';
   const CLOUDINARY_PRESET = 'asom-media';
   const ADMIN_PIN = 'admin1234';
@@ -2273,8 +2273,20 @@ function renderCsvPreview(headers, rows) {
 async function testImportConnection() {
   const btn = document.getElementById('btnTestConn');
   if(btn){btn.disabled=true;btn.textContent='กำลังทดสอบ...';}
-  const testRow = {village:99,house_number:'TEST',full_name:'__TEST_DELETE_ME__',gender:'ชาย'};
-  const {data, error} = await sb.from('population').insert(testRow).select();
+  const {data, error} = await sb.from('population').select('id').limit(1);
+  if(error){
+    document.getElementById('csvConnResult').innerHTML =
+      `<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:8px;padding:12px;margin-top:10px;font-size:13px">
+        ❌ <strong>เชื่อมต่อไม่สำเร็จ:</strong> <code style="color:#c62828">${error.message}</code>
+      </div>`;
+  } else {
+    document.getElementById('csvConnResult').innerHTML =
+      `<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:12px;margin-top:10px;font-size:13px">
+        ✅ <strong>เชื่อมต่อสำเร็จ!</strong> ตาราง population พร้อมใช้งาน
+      </div>`;
+  }
+  if(btn){btn.disabled=false;btn.textContent='🔌 ทดสอบการเชื่อมต่อ';}
+}
   if(error){
     document.getElementById('csvConnResult').innerHTML =
       `<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:8px;padding:12px;margin-top:10px;font-size:13px">
