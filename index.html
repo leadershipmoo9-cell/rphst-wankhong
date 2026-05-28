@@ -1004,7 +1004,7 @@ async function uploadCloudinary(file){
 // ============================================================
 //  NAVIGATION
 // ============================================================
-function showPage(id, btn) {
+async function showPage(id, btn) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
@@ -1014,7 +1014,11 @@ function showPage(id, btn) {
   if(id==='activities') renderCalendar();
   if(id==='actorder') loadActOrderSelects();
   if(id==='news') loadNews();
-  if(id==='health') { initHealthFilters(); loadHealth(); }
+  if(id==='health') { 
+  if(!membersData || membersData.length===0) await loadMembers();
+  initHealthFilters(); 
+  loadHealth(); 
+}
   if(id==='population') loadPopulation();
   if(id==='dashboard') loadDashboard();
   if(id==='chat' && chatName) initChat();
@@ -1635,21 +1639,27 @@ function selectPopulation(p){
 // ============================================================
 //  HEALTH SCREENING
 // ============================================================
-function updateScreenerByVillage(){
+async function updateScreenerByVillage(){
   const village=parseInt(document.getElementById('hVillage').value)||0;
   const sc=document.getElementById('hScreener');
   const prev=sc.value;
   sc.innerHTML='<option value="">-- เลือก อสม. --</option>';
+  // ถ้า membersData ว่างให้โหลดใหม่
+  if(!membersData || membersData.length===0){
+    await loadMembers();
+  }
   const asoms=membersData.filter(m=>m.type==='asom'&&(!village||parseInt(m.village)===village));
+  if(asoms.length===0){
+    sc.innerHTML='<option value="">-- ไม่พบ อสม. ในหมู่นี้ --</option>';
+    return;
+  }
   asoms.sort((a,b)=>(a.position_order||5)-(b.position_order||5)).forEach(m=>{
     const o=document.createElement('option');
     o.value=m.name;
     o.textContent=m.name+(m.position_label?' — '+m.position_label:'')+(m.village?' (หมู่ '+m.village+')':'');
     sc.appendChild(o);
   });
-  // restore previous value if still valid
   if(prev && [...sc.options].some(o=>o.value===prev)) sc.value=prev;
-  // auto-select if only one option
   else if(asoms.length===1) sc.value=asoms[0].name;
 }
 
@@ -1662,14 +1672,11 @@ function initHealthFilters(){
   const hm=document.getElementById('hMonth'); if(!hm.innerHTML) MONTHS_TH.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; hm.appendChild(o); });
   // Populate village dropdown
   const hv=document.getElementById('hVillage');
-  if(hv.options.length<=1){
-    const VILLAGE_ORDER=[8,9,11,13,14,16];
-    const villages=[...new Set(membersData.filter(m=>m.type==='asom').map(m=>parseInt(m.village)).filter(Boolean))].sort((a,b)=>{
-      const ia=VILLAGE_ORDER.indexOf(a), ib=VILLAGE_ORDER.indexOf(b);
-      return (ia===-1?99:ia)-(ib===-1?99:ib);
-    });
-    villages.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent='หมู่ '+v; hv.appendChild(o); });
-  }
+if(hv.options.length<=1){
+  [8,9,11,13,14,16].forEach(v=>{
+    const o=document.createElement('option'); o.value=v; o.textContent='หมู่ '+v; hv.appendChild(o);
+  });
+}
   // Populate screener based on current village
   const sc=document.getElementById('hScreener');
   if(sc.options.length<=1){ updateScreenerByVillage(); }
@@ -1731,8 +1738,12 @@ function renderHealthTable(){
       }).join('');
 }
 
-function openHealthForm(){
+async function openHealthForm(){
   editingHealthId=null;
+  // ตรวจสอบว่ามีข้อมูล members หรือยัง ถ้าไม่มีให้โหลดก่อน
+  if(!membersData || membersData.length===0){
+    await loadMembers();
+  }
   document.getElementById('healthFormTitle').textContent='🩺 บันทึกการคัดกรองสุขภาพ';
   const now=new Date();
   document.getElementById('hDate').value=now.toISOString().substring(0,10);
