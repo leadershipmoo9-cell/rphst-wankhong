@@ -675,12 +675,22 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
 
   <!-- ── จัดการข้อมูลประชากร ── -->
   <div id="page-population" class="page">
+    <div id="popAdminGate" style="display:none;text-align:center;padding:60px 20px">
+      <div style="font-size:48px;margin-bottom:16px">🔐</div>
+      <h3 style="font-family:Kanit;color:var(--green-dark);margin-bottom:8px">ต้องเข้าสู่ระบบ Admin</h3>
+      <p style="color:var(--gray-mid);font-size:14px;margin-bottom:20px">หน้านี้สำหรับผู้ดูแลระบบเท่านั้น</p>
+      <button class="btn-primary" onclick="openModal('modalAdminLogin')">🔐 เข้าสู่ระบบ Admin</button>
+    </div>
+    <div id="popAdminContent">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div>
         <h2 class="section-title">👥 จัดการข้อมูลประชากร</h2>
         <p class="section-sub">ค้นหา เพิ่ม แก้ไข และลบรายชื่อประชากรในแต่ละหมู่บ้าน</p>
       </div>
-      <button class="btn-primary" onclick="openAddPopModal()">➕ เพิ่มประชากร</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="openAddPopModal()">➕ เพิ่มประชากร</button>
+        <button class="btn-outline" style="font-size:12px;color:#c62828;border-color:#e53e3e" onclick="logoutAdmin();showPage('home',null)">🚪 ออกจากระบบ</button>
+      </div>
     </div>
     <div class="filter-bar" style="margin-bottom:14px">
       <select id="filterPopVillage" onchange="loadPopulation()" style="padding:7px 10px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px">
@@ -709,6 +719,7 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
     </div>
     <div style="text-align:center;margin-top:16px">
       <button id="popLoadMoreBtn" class="btn-outline" onclick="loadPopulationMore()" style="display:none">โหลดเพิ่มเติม ⬇️</button>
+    </div>
     </div>
   </div>
 
@@ -990,30 +1001,30 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
         <div class="form-group"><label>วันที่</label><input type="date" id="cnDate" /></div>
         <div class="form-group"><label>เวลา</label><input type="time" id="cnTime" /></div>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>หมู่ที่ *</label>
-          <select id="cnVillage" onchange="loadChildrenByVillage()">
-            <option value="">-- เลือกหมู่ที่ --</option>
-            <option value="8">หมู่ 8</option><option value="9">หมู่ 9</option>
-            <option value="11">หมู่ 11</option><option value="13">หมู่ 13</option>
-            <option value="14">หมู่ 14</option><option value="16">หมู่ 16</option>
-          </select>
-        </div>
-      </div>
     </div>
 
     <!-- ค้นหาเด็กจากฐานประชากร -->
     <div class="health-section">
       <div class="health-section-title">🔍 เลือกเด็กจากฐานข้อมูลประชากร <span style="font-size:11px;color:var(--gray-mid);font-weight:400">(อายุ 0-5 ปี)</span></div>
       <div style="background:var(--green-pale);border-radius:10px;padding:14px 16px;margin-bottom:14px;border:1.5px dashed var(--green-light)">
+        <p style="font-size:12px;color:var(--text-sub);margin-bottom:10px">👉 เลือก <strong>หมู่ที่</strong> ก่อน → กรอก <strong>บ้านเลขที่</strong> → รายชื่อจะแสดงอัตโนมัติ</p>
         <div class="form-row" style="margin-bottom:8px">
           <div class="form-group">
-            <label>ค้นหาชื่อเด็ก</label>
-            <input id="cnPopSearch" placeholder="พิมพ์ชื่อเด็ก..." oninput="filterCnChildList()" />
+            <label>หมู่ที่ *</label>
+            <select id="cnVillage" onchange="loadChildrenByVillage()">
+              <option value="">-- เลือกหมู่ที่ --</option>
+              <option value="8">หมู่ 8</option><option value="9">หมู่ 9</option>
+              <option value="11">หมู่ 11</option><option value="13">หมู่ 13</option>
+              <option value="14">หมู่ 14</option><option value="16">หมู่ 16</option>
+            </select>
           </div>
           <div class="form-group">
-            <label>บ้านเลขที่</label>
-            <input id="cnPopHouseNo" placeholder="เช่น 1, 2/3..." oninput="filterCnChildList()" />
+            <label>บ้านเลขที่ <span style="font-size:11px;color:var(--gray-mid)">(กรอกเพื่อกรอง)</span></label>
+            <input id="cnPopHouseNo" placeholder="เช่น 129, 2/3..." oninput="filterCnChildList()" />
+          </div>
+          <div class="form-group">
+            <label>ค้นหาชื่อเด็ก</label>
+            <input id="cnPopSearch" placeholder="พิมพ์ชื่อ..." oninput="filterCnChildList()" />
           </div>
         </div>
         <div id="cnPopList" style="border:1.5px solid var(--green-light);border-radius:8px;overflow:hidden;max-height:220px;overflow-y:auto;background:white;display:none"></div>
@@ -1110,17 +1121,18 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
     <div class="health-section">
       <div class="health-section-title">🔍 เลือกผู้รับบริการจากฐานข้อมูลประชากร <span style="font-size:11px;color:var(--gray-mid);font-weight:400">(หญิง อายุ 30-60 ปี)</span></div>
       <div style="background:var(--green-pale);border-radius:10px;padding:14px 16px;margin-bottom:14px;border:1.5px dashed var(--green-light)">
+        <p style="font-size:12px;color:var(--text-sub);margin-bottom:10px">👉 เลือก <strong>หมู่ที่</strong> ก่อน → กรอก <strong>บ้านเลขที่</strong> → รายชื่อจะแสดงอัตโนมัติ</p>
         <div class="form-row" style="margin-bottom:8px">
-          <div class="form-group"><label>หมู่ที่</label>
+          <div class="form-group"><label>หมู่ที่ *</label>
             <select id="cervPopVillage" onchange="loadCervPopList()">
-              <option value="">-- เลือกหมู่ --</option>
+              <option value="">-- เลือกหมู่ที่ --</option>
               <option value="8">หมู่ 8</option><option value="9">หมู่ 9</option>
               <option value="11">หมู่ 11</option><option value="13">หมู่ 13</option>
               <option value="14">หมู่ 14</option><option value="16">หมู่ 16</option>
             </select>
           </div>
+          <div class="form-group"><label>บ้านเลขที่ <span style="font-size:11px;color:var(--gray-mid)">(กรอกเพื่อกรอง)</span></label><input id="cervPopHouseNo" placeholder="เช่น 129, 2/3" oninput="filterCervPopList()" /></div>
           <div class="form-group"><label>ค้นหาชื่อ</label><input id="cervPopSearch" placeholder="พิมพ์ชื่อ..." oninput="filterCervPopList()" /></div>
-          <div class="form-group"><label>บ้านเลขที่</label><input id="cervPopHouseNo" placeholder="เช่น 1, 2/3" oninput="filterCervPopList()" /></div>
         </div>
         <div id="cervPopList" style="border:1.5px solid var(--green-light);border-radius:8px;overflow:hidden;max-height:220px;overflow-y:auto;background:white;display:none"></div>
         <div id="cervPopSelected" style="display:none;background:white;border:1.5px solid var(--green-mid);border-radius:8px;padding:8px 12px;margin-top:8px;font-size:13px;color:var(--green-dark);font-weight:600"></div>
@@ -1316,7 +1328,9 @@ function submitAdminLogin(){
   else sessionStorage.setItem('admin_wk_session','1');
   closeModal('modalAdminLogin');
   toast('เข้าสู่ระบบสำเร็จ');
-  loadMembers();
+  const activePage = document.querySelector('.page.active');
+  if(activePage && activePage.id==='page-population') loadPopulation();
+  else loadMembers();
 }
 function logoutAdmin(){ isAdmin=false; localStorage.removeItem('admin_wk'); sessionStorage.removeItem('admin_wk_session'); loadMembers(); }
 
@@ -2149,9 +2163,9 @@ function fillCervScreenerPhone() {
 async function loadCervPopList() {
   const village = document.getElementById('cervPopVillage').value;
   if(!village) { cervPopCache=[]; document.getElementById('cervPopList').style.display='none'; return; }
-  // Women aged 30-60
+  const cervV = document.getElementById('cervVillage');
+  if(cervV) cervV.value = village;
   const {data} = await sb.from('population').select('id,village,house_number,full_name,gender,birthdate,phone').eq('village',parseInt(village)).limit(500);
-  const now = new Date();
   cervPopCache = (data||[]).filter(p=>{
     if(!p.birthdate) return false;
     if(p.gender === 'ชาย') return false;
@@ -2304,6 +2318,15 @@ async function sendChat(){const inp=document.getElementById('chatInput'),msg=inp
 
 // ── POPULATION ──
 async function loadPopulation(){
+  const gate=document.getElementById('popAdminGate');
+  const content=document.getElementById('popAdminContent');
+  if(!isAdmin){
+    gate.style.display='block';
+    content.style.display='none';
+    return;
+  }
+  gate.style.display='none';
+  content.style.display='block';
   popOffset=0;popData=[];
   const village=document.getElementById('filterPopVillage').value;
   let q=sb.from('population').select('*',{count:'exact'}).order('village',{ascending:true}).order('house_number',{ascending:true}).limit(POP_PAGE);
