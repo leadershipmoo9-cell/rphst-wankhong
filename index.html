@@ -1835,7 +1835,12 @@ async function loadChildNutrition() {
   if(m > 0) q = q.eq('month', m);
   if(v) q = q.eq('village', parseInt(v));
   const {data, error} = await q;
-  if(error) { document.getElementById('cnTable').innerHTML='<tr><td colspan="18" style="text-align:center;padding:20px;color:#c62828">⚠️ ยังไม่มีตาราง child_nutrition — กรุณาสร้างตารางใน Supabase ก่อน</td></tr>'; return; }
+  if(error) {
+    document.getElementById('cnSqlHint').style.display='block';
+    document.getElementById('cnTable').innerHTML='<tr><td colspan="18" style="text-align:center;padding:20px;color:#c62828">⚠️ ยังไม่มีตาราง child_nutrition — กรุณารัน SQL ด้านบนใน Supabase ก่อน แล้วรีโหลดหน้านี้</td></tr>';
+    return;
+  }
+  document.getElementById('cnSqlHint').style.display='none';
   childNutritionData = data||[];
   renderCnTable();
 }
@@ -2049,7 +2054,12 @@ async function loadCervical() {
   if(m > 0) q = q.eq('month', m);
   if(v) q = q.eq('village', parseInt(v));
   const {data, error} = await q;
-  if(error) { document.getElementById('cervTable').innerHTML='<tr><td colspan="14" style="text-align:center;padding:20px;color:#c62828">⚠️ ยังไม่มีตาราง cervical_screening — กรุณาสร้างตารางใน Supabase ก่อน</td></tr>'; return; }
+  if(error) {
+    document.getElementById('cervSqlHint').style.display='block';
+    document.getElementById('cervTable').innerHTML='<tr><td colspan="14" style="text-align:center;padding:20px;color:#c62828">⚠️ ยังไม่มีตาราง cervical_screening — กรุณารัน SQL ด้านบนใน Supabase ก่อน แล้วรีโหลดหน้านี้</td></tr>';
+    return;
+  }
+  document.getElementById('cervSqlHint').style.display='none';
   cervicalData = data||[];
   renderCervTable();
 }
