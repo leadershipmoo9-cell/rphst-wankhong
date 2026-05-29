@@ -1938,14 +1938,23 @@ function filterCnChildList() {
   const search = (document.getElementById('cnPopSearch').value||'').toLowerCase();
   const houseNo = (document.getElementById('cnPopHouseNo').value||'').toLowerCase();
   const el = document.getElementById('cnPopList');
-  const filtered = cnChildCache.filter(p=>{
-    const nameMatch = !search || p.full_name.toLowerCase().includes(search);
-    const houseMatch = !houseNo || (p.house_number||'').toLowerCase().includes(houseNo);
-    return nameMatch && houseMatch;
-  }).slice(0,20);
-  if(filtered.length === 0) { el.style.display='none'; return; }
+  if(cnChildCache.length === 0) { el.style.display='none'; return; }
+  let list = cnChildCache;
+  if(search || houseNo) {
+    list = cnChildCache.filter(p=>{
+      const nameMatch = !search || p.full_name.toLowerCase().includes(search);
+      const houseMatch = !houseNo || (p.house_number||'').toLowerCase().includes(houseNo);
+      return nameMatch && houseMatch;
+    });
+  }
+  list = list.slice(0,30);
+  if(list.length === 0) {
+    el.style.display='block';
+    el.innerHTML='<div style="padding:12px 14px;color:var(--gray-mid);font-size:13px">ไม่พบข้อมูลเด็กอายุ 0-5 ปี ในหมู่นี้</div>';
+    return;
+  }
   el.style.display = 'block';
-  el.innerHTML = filtered.map(p=>{
+  el.innerHTML = list.map(p=>{
     const a = calcAge(p.birthdate);
     return `<div onclick='selectCnChild(${JSON.stringify(p)})' style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eef2ef;font-size:13px" onmouseenter="this.style.background='var(--green-pale)'" onmouseleave="this.style.background=''">
       <strong>${p.full_name}</strong>
@@ -2179,25 +2188,23 @@ function filterCervPopList() {
   const search = (document.getElementById('cervPopSearch').value||'').toLowerCase();
   const houseNo = (document.getElementById('cervPopHouseNo').value||'').toLowerCase();
   const el = document.getElementById('cervPopList');
-  const filtered = cervPopCache.filter(p=>{
-    const nameMatch = !search || p.full_name.toLowerCase().includes(search);
-    const houseMatch = !houseNo || (p.house_number||'').toLowerCase().includes(houseNo);
-    return nameMatch && houseMatch;
-  }).slice(0,20);
-  if(filtered.length === 0 && !search && !houseNo && cervPopCache.length > 0) {
-    el.style.display = 'block';
-    el.innerHTML = cervPopCache.slice(0,20).map(p=>{
-      const a = calcAge(p.birthdate);
-      return `<div onclick='selectCervPop(${JSON.stringify(p)})' style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eef2ef;font-size:13px" onmouseenter="this.style.background='var(--green-pale)'" onmouseleave="this.style.background=''">
-        <strong>${p.full_name}</strong>
-        <span style="margin-left:8px;font-size:11px;color:var(--gray-mid)">บ้านเลขที่ ${p.house_number||'-'} | อายุ ${a.y} ปี | ${p.phone||''}</span>
-      </div>`;
-    }).join('');
+  if(cervPopCache.length === 0) { el.style.display='none'; return; }
+  let list = cervPopCache;
+  if(search || houseNo) {
+    list = cervPopCache.filter(p=>{
+      const nameMatch = !search || p.full_name.toLowerCase().includes(search);
+      const houseMatch = !houseNo || (p.house_number||'').toLowerCase().includes(houseNo);
+      return nameMatch && houseMatch;
+    });
+  }
+  list = list.slice(0,30);
+  if(list.length === 0) {
+    el.style.display='block';
+    el.innerHTML='<div style="padding:12px 14px;color:var(--gray-mid);font-size:13px">ไม่พบข้อมูลหญิงอายุ 30-60 ปี ในหมู่นี้</div>';
     return;
   }
-  if(filtered.length === 0) { el.style.display='none'; return; }
   el.style.display = 'block';
-  el.innerHTML = filtered.map(p=>{
+  el.innerHTML = list.map(p=>{
     const a = calcAge(p.birthdate);
     return `<div onclick='selectCervPop(${JSON.stringify(p)})' style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eef2ef;font-size:13px" onmouseenter="this.style.background='var(--green-pale)'" onmouseleave="this.style.background=''">
       <strong>${p.full_name}</strong>
