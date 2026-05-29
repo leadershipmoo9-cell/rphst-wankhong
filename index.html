@@ -322,6 +322,7 @@
       <select id="filterFinType" onchange="renderFinance()"><option value="">ทุกประเภท</option><option value="income">รายรับ</option><option value="expense">รายจ่าย</option></select>
       <input type="month" id="filterFinMonth" onchange="renderFinance()" />
     </div>
+    <div style="text-align:right;margin-bottom:10px"><button class="btn-outline" onclick="exportFinanceExcel()">📥 Export Excel</button></div>
     <div class="table-wrap"><div class="table-scroll"><table>
       <thead><tr><th>วันที่</th><th>ประเภท</th><th>หมวดหมู่</th><th>รายละเอียด</th><th>จำนวนเงิน</th><th></th></tr></thead>
       <tbody id="finTable"></tbody>
@@ -348,8 +349,10 @@
 
   <!-- ── ลำดับเข้าร่วม ── -->
   <div id="page-actorder" class="page">
-    <h2 class="section-title">📋 ลำดับเข้าร่วมกิจกรรม</h2>
-    <p class="section-sub">บันทึกลำดับการเข้าร่วมกิจกรรมของสมาชิก อสม.</p>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:10px">
+      <div><h2 class="section-title">📋 ลำดับเข้าร่วมกิจกรรม</h2><p class="section-sub">บันทึกลำดับการเข้าร่วมกิจกรรมของสมาชิก อสม.</p></div>
+      <button class="btn-outline" onclick="exportAttendanceExcel()">📥 Export Excel</button>
+    </div>
     <div class="section-box">
       <div class="section-box-title">📅 เลือกกิจกรรม</div>
       <select id="actOrderSelect" onchange="loadAttendances()" style="width:100%;padding:8px 10px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px">
@@ -385,7 +388,10 @@
   <div id="page-health" class="page">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div><h2 class="section-title">🩺 คัดกรองสุขภาพประจำปี</h2><p class="section-sub">ข้อมูลการคัดกรองสุขภาพประชาชนประจำปี</p></div>
-      <button class="btn-primary" onclick="openHealthForm()">➕ บันทึกการคัดกรอง</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="openHealthForm()">➕ บันทึกการคัดกรอง</button>
+        <button class="btn-outline" onclick="exportHealthScreeningExcel()">📥 Export Excel</button>
+      </div>
     </div>
     <div class="filter-bar">
       <select id="filterHealthYear" onchange="loadHealth()"></select>
@@ -408,7 +414,10 @@
         <h2 class="section-title">👶 คัดกรองโภชนาการเด็ก 0-5 ปี</h2>
         <p class="section-sub">บันทึกและประเมินภาวะโภชนาการเด็กอายุ 0-5 ปี ตามเกณฑ์ WHO 2006</p>
       </div>
-      <button class="btn-primary" onclick="openChildNutritionForm()">➕ บันทึกการคัดกรอง</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="openChildNutritionForm()">➕ บันทึกการคัดกรอง</button>
+        <button class="btn-outline" onclick="exportChildNutritionExcel()">📥 Export Excel</button>
+      </div>
     </div>
 
     <!-- SQL hint for first-time setup -->
@@ -470,7 +479,10 @@ CREATE POLICY "allow_all" ON public.child_nutrition FOR ALL USING (true) WITH CH
         <h2 class="section-title">🔬 คัดกรองมะเร็งปากมดลูก อายุ 30-60 ปี</h2>
         <p class="section-sub">บันทึกผลการคัดกรองมะเร็งปากมดลูกของประชาชนหญิงอายุ 30-60 ปี</p>
       </div>
-      <button class="btn-primary" onclick="openCervicalForm()">➕ บันทึกการคัดกรอง</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="openCervicalForm()">➕ บันทึกการคัดกรอง</button>
+        <button class="btn-outline" onclick="exportCervicalExcel()">📥 Export Excel</button>
+      </div>
     </div>
 
     <!-- SQL hint -->
@@ -694,6 +706,7 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-primary" onclick="openAddPopModal()">➕ เพิ่มประชากร</button>
+        <button class="btn-outline" onclick="exportPopulationExcel()">📥 Export Excel</button>
         <button class="btn-outline" style="font-size:12px;color:#c62828;border-color:#e53e3e" onclick="logoutAdmin();showPage('home',null)">🚪 ออกจากระบบ</button>
       </div>
     </div>
@@ -2355,6 +2368,166 @@ async function exportHealthExcel(){
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Health '+y);
   XLSX.writeFile(wb,'health_screening_'+y+'.xlsx');
   toast('Export Excel เรียบร้อย');
+}
+
+// ── EXPORT FUNCTIONS ──
+
+async function exportHealthScreeningExcel(){
+  const y=document.getElementById('filterHealthYear').value||new Date().getFullYear()+543;
+  const m=document.getElementById('filterHealthMonth').value;
+  toast('กำลังโหลดข้อมูล...');
+  let q=sb.from('health_screening').select('*').eq('year',y).order('screen_date',{ascending:true});
+  if(m>0) q=q.eq('month',m);
+  const {data}=await q;
+  if(!data||data.length===0){toast('ไม่มีข้อมูลสำหรับตัวกรองที่เลือก','error');return;}
+  const rows=data.map(r=>({
+    'ปี':r.year,'เดือน':MONTHS_TH[(r.month||1)-1],'วันที่คัดกรอง':r.screen_date,'เวลา':r.screen_time,
+    'อสม.ผู้คัดกรอง':r.screener_name,'หมู่':r.village,'ชื่อ-สกุล':r.full_name,
+    'เพศ':r.gender,'วันเกิด':r.birthdate,'อายุ (ปี)':r.age_years,'อายุ (เดือน)':r.age_months,
+    'เลขบัตรประชาชน':r.id_card,'เบอร์โทร':r.phone,'น้ำหนัก(กก.)':r.weight,'ส่วนสูง(ซม.)':r.height,
+    'BMI':r.bmi,'กลุ่ม BMI':r.bmi_category,'รอบเอว(ซม.)':r.waist,
+    'การศึกษา':r.education,'อาชีพ':r.occupation,'สถานภาพ':r.marital_status,
+    'ความดัน1 SYS':r.bp1_sys,'ความดัน1 DIA':r.bp1_dia,'ความดัน1 ชีพจร':r.bp1_pulse,
+    'ความดัน2 SYS':r.bp2_sys,'ความดัน2 DIA':r.bp2_dia,'ความดัน2 ชีพจร':r.bp2_pulse,
+    'ความดัน3 SYS':r.bp3_sys,'ความดัน3 DIA':r.bp3_dia,'ความดัน3 ชีพจร':r.bp3_pulse,
+    'ความดันเฉลี่ย SYS':r.bp_avg_sys,'ความดันเฉลี่ย DIA':r.bp_avg_dia,
+    'กลุ่มความดัน':r.bp_group,'น้ำตาลในเลือด(mg/dL)':r.blood_sugar,'กลุ่มน้ำตาล':r.sugar_group,
+    'สูบบุหรี่':r.smoke,'มวน/วัน':r.smoke_per_day,'ชนิดบุหรี่':r.smoke_type,'ระยะเวลาสูบ':r.smoke_duration,
+    'ดื่มแอลกอฮอล์':r.alcohol,'วัน/สัปดาห์':r.alcohol_per_week,'ภาวะซึมเศร้า':r.depression1
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'คัดกรองสุขภาพ');
+  XLSX.writeFile(wb,'health_screening_'+y+(m>0?'_เดือน'+m:'')+'.xlsx');
+  toast('Export Excel เรียบร้อย ('+rows.length+' รายการ)');
+}
+
+async function exportChildNutritionExcel(){
+  const y=document.getElementById('filterCnYear').value||new Date().getFullYear()+543;
+  const m=document.getElementById('filterCnMonth').value;
+  const v=document.getElementById('filterCnVillage').value;
+  toast('กำลังโหลดข้อมูล...');
+  let q=sb.from('child_nutrition').select('*').eq('year',y).order('screen_date',{ascending:true});
+  if(m>0) q=q.eq('month',m);
+  if(v) q=q.eq('village',parseInt(v));
+  const {data,error}=await q;
+  if(error){toast('เกิดข้อผิดพลาด: '+error.message,'error');return;}
+  if(!data||data.length===0){toast('ไม่มีข้อมูลสำหรับตัวกรองที่เลือก','error');return;}
+  const q2=(document.getElementById('filterCnSearch').value||'').toLowerCase();
+  const list=q2?data.filter(r=>r.full_name&&r.full_name.toLowerCase().includes(q2)):data;
+  if(list.length===0){toast('ไม่มีข้อมูลที่ตรงกับการค้นหา','error');return;}
+  const rows=list.map(r=>({
+    'ปี':r.year,'เดือน':MONTHS_TH[(r.month||1)-1],'วันที่คัดกรอง':r.screen_date,'เวลา':r.screen_time,
+    'หมู่':r.village,'บ้านเลขที่':r.house_number,'ชื่อ-สกุล':r.full_name,'เพศ':r.gender,
+    'วันเกิด':r.birthdate,'อายุ(เดือน)':r.age_months,
+    'น้ำหนัก(กก.)':r.weight,'ส่วนสูง(ซม.)':r.height,'รอบศีรษะ(ซม.)':r.head_circumference,
+    'น้ำหนักตามเกณฑ์อายุ':r.weight_status,'ส่วนสูงตามเกณฑ์อายุ':r.height_status,
+    'น้ำหนักต่อส่วนสูง':r.weight_height_status,'รอบศีรษะ':r.head_circ_status,
+    'ผลประเมินรวม':r.overall_assessment
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  // Set column widths
+  ws['!cols']=[{wch:6},{wch:12},{wch:14},{wch:8},{wch:6},{wch:10},{wch:22},{wch:6},{wch:12},{wch:10},{wch:10},{wch:10},{wch:12},{wch:22},{wch:22},{wch:20},{wch:16},{wch:16}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'โภชนาการเด็ก');
+  XLSX.writeFile(wb,'child_nutrition_'+y+(m>0?'_เดือน'+m:'')+(v?'_หมู่'+v:'')+'.xlsx');
+  toast('Export Excel เรียบร้อย ('+rows.length+' รายการ)');
+}
+
+async function exportCervicalExcel(){
+  const y=document.getElementById('filterCervYear').value||new Date().getFullYear()+543;
+  const m=document.getElementById('filterCervMonth').value;
+  const v=document.getElementById('filterCervVillage').value;
+  const intent=document.getElementById('filterCervIntention').value;
+  toast('กำลังโหลดข้อมูล...');
+  let q=sb.from('cervical_screening').select('*').eq('year',y).order('screen_date',{ascending:true});
+  if(m>0) q=q.eq('month',m);
+  if(v) q=q.eq('village',parseInt(v));
+  if(intent) q=q.eq('intention',intent);
+  const {data,error}=await q;
+  if(error){toast('เกิดข้อผิดพลาด: '+error.message,'error');return;}
+  if(!data||data.length===0){toast('ไม่มีข้อมูลสำหรับตัวกรองที่เลือก','error');return;}
+  const q2=(document.getElementById('filterCervSearch').value||'').toLowerCase();
+  const list=q2?data.filter(r=>(r.full_name&&r.full_name.toLowerCase().includes(q2))||(r.screener_name&&r.screener_name.toLowerCase().includes(q2))):data;
+  if(list.length===0){toast('ไม่มีข้อมูลที่ตรงกับการค้นหา','error');return;}
+  const rows=list.map(r=>({
+    'ปี':r.year,'เดือน':MONTHS_TH[(r.month||1)-1],'วันที่คัดกรอง':r.screen_date,'เวลา':r.screen_time,
+    'อสม.ผู้คัดกรอง':r.screener_name,'เบอร์ อสม.':r.screener_phone,
+    'หมู่':r.village,'บ้านเลขที่':r.house_number,
+    'ชื่อ-สกุล':r.full_name,'วันเกิด':r.birthdate,'อายุ(ปี)':r.age_years,'เบอร์โทร':r.phone,
+    'ความประสงค์':r.intention,'หมายเหตุ':r.note
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:6},{wch:12},{wch:14},{wch:8},{wch:22},{wch:14},{wch:6},{wch:12},{wch:24},{wch:12},{wch:8},{wch:14},{wch:16},{wch:20}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'มะเร็งปากมดลูก');
+  XLSX.writeFile(wb,'cervical_screening_'+y+(m>0?'_เดือน'+m:'')+(v?'_หมู่'+v:'')+(intent?'_'+intent:'')+'.xlsx');
+  toast('Export Excel เรียบร้อย ('+rows.length+' รายการ)');
+}
+
+function exportFinanceExcel(){
+  if(!financeData||financeData.length===0){toast('ไม่มีข้อมูลรายรับ-รายจ่าย','error');return;}
+  const ft=document.getElementById('filterFinType').value;
+  const fm=document.getElementById('filterFinMonth').value;
+  const list=financeData.filter(r=>(!ft||r.type===ft)&&(!fm||r.date?.startsWith(fm)));
+  if(list.length===0){toast('ไม่มีข้อมูลที่ตรงกับตัวกรองที่เลือก','error');return;}
+  const rows=list.map(r=>({
+    'วันที่':r.date,'ประเภท':r.type==='income'?'รายรับ':'รายจ่าย',
+    'หมวดหมู่':r.category||'','รายละเอียด':r.description||'',
+    'จำนวนเงิน(บาท)':r.amount
+  }));
+  const inc=list.filter(r=>r.type==='income').reduce((s,r)=>s+(r.amount||0),0);
+  const exp=list.filter(r=>r.type==='expense').reduce((s,r)=>s+(r.amount||0),0);
+  rows.push({});
+  rows.push({'วันที่':'รวมรายรับ','ประเภท':'','หมวดหมู่':'','รายละเอียด':'','จำนวนเงิน(บาท)':inc});
+  rows.push({'วันที่':'รวมรายจ่าย','ประเภท':'','หมวดหมู่':'','รายละเอียด':'','จำนวนเงิน(บาท)':exp});
+  rows.push({'วันที่':'คงเหลือ','ประเภท':'','หมวดหมู่':'','รายละเอียด':'','จำนวนเงิน(บาท)':inc-exp});
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:14},{wch:10},{wch:16},{wch:28},{wch:16}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'รายรับ-รายจ่าย');
+  const suffix=fm?'_'+fm:'';
+  XLSX.writeFile(wb,'finance'+suffix+'.xlsx');
+  toast('Export Excel เรียบร้อย ('+list.length+' รายการ)');
+}
+
+async function exportAttendanceExcel(){
+  const actId=document.getElementById('actOrderSelect').value;
+  const actName=document.getElementById('actOrderSelect').options[document.getElementById('actOrderSelect').selectedIndex]?.text||'';
+  if(!actId){toast('กรุณาเลือกกิจกรรมก่อน','error');return;}
+  toast('กำลังโหลดข้อมูล...');
+  const {data}=await sb.from('attendances').select('*').eq('activity_id',actId).order('order_num',{ascending:true});
+  if(!data||data.length===0){toast('ไม่มีรายชื่อผู้เข้าร่วม','error');return;}
+  const rows=data.map(r=>({'ลำดับ':r.order_num,'ชื่อ-สกุล':r.member_name,'วันที่บันทึก':r.created_at?new Date(r.created_at).toLocaleDateString('th-TH'):'-'}));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:8},{wch:28},{wch:18}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'รายชื่อผู้เข้าร่วม');
+  const safeActName=actName.replace(/[^a-zA-Z0-9ก-๙\s]/g,'').trim().substring(0,30);
+  XLSX.writeFile(wb,'attendance_'+(safeActName||actId)+'.xlsx');
+  toast('Export Excel เรียบร้อย ('+rows.length+' คน)');
+}
+
+async function exportPopulationExcel(){
+  const v=document.getElementById('filterPopVillage').value;
+  const nameQ=(document.getElementById('filterPopName').value||'').trim();
+  const houseQ=(document.getElementById('filterPopHouse').value||'').trim();
+  toast('กำลังโหลดข้อมูล...');
+  let q=sb.from('population').select('*').order('village',{ascending:true}).order('house_number',{ascending:true});
+  if(v) q=q.eq('village',parseInt(v));
+  if(houseQ) q=q.ilike('house_number','%'+houseQ+'%');
+  if(nameQ) q=q.ilike('full_name','%'+nameQ+'%');
+  const {data,error}=await q;
+  if(error){toast('เกิดข้อผิดพลาด: '+error.message,'error');return;}
+  if(!data||data.length===0){toast('ไม่มีข้อมูลประชากร','error');return;}
+  const rows=data.map(r=>{
+    const a=calcAge(r.birthdate);
+    return{
+      'หมู่ที่':r.village,'บ้านเลขที่':r.house_number,'ชื่อ-สกุล':r.full_name,
+      'เพศ':r.gender,'วันเกิด(ค.ศ.)':r.birthdate,
+      'อายุ(ปี)':a.y,'เลขบัตรประชาชน':r.id_card||'','เบอร์โทร':r.phone||''
+    };
+  });
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:8},{wch:12},{wch:26},{wch:8},{wch:14},{wch:8},{wch:16},{wch:14}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'ทะเบียนประชากร');
+  XLSX.writeFile(wb,'population'+(v?'_หมู่'+v:'')+'.xlsx');
+  toast('Export Excel เรียบร้อย ('+rows.length+' คน)');
 }
 
 // ── CHAT ──
