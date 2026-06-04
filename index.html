@@ -1605,7 +1605,7 @@ async function searchPopForHealth(){
   const houseNo=document.getElementById('hPopHouseNo').value.trim();
   const name=document.getElementById('hPopName').value.trim();
   if(!name&&!houseNo&&!village){document.getElementById('hPopResults').style.display='none';return;}
-  let q=sb.from('population').select('id,village,house_number,full_name,gender,birthdate,phone').limit(30);
+  let q=sb.from('population').select('id,village,house_number,full_name,gender,birthdate,phone,id_card').limit(30);
   if(village) q=q.eq('village',parseInt(village));
   if(houseNo) q=q.ilike('house_number','%'+houseNo+'%');
   if(name) q=q.ilike('full_name','%'+name+'%');
