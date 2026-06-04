@@ -1198,7 +1198,7 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
 
 <!-- Population Edit Modal -->
 <div class="modal-overlay" id="modalPopEdit">
-  <div class="modal" style="max-width:560px">
+  <div class="modal" style="max-width:580px">
     <button class="modal-close" onclick="closeModal('modalPopEdit')">×</button>
     <h2 id="popEditTitle">➕ เพิ่มประชากร</h2>
     <div class="form-row">
@@ -1212,14 +1212,45 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
       </div>
       <div class="form-group"><label>บ้านเลขที่</label><input id="popHouseNo" placeholder="เช่น 1, 2/3" /></div>
     </div>
-    <div class="form-group"><label>ชื่อ-สกุล *</label><input id="popFullName" placeholder="คำนำหน้า ชื่อ นามสกุล" /></div>
+    <div class="form-row" style="grid-template-columns:150px 1fr 1fr">
+      <div class="form-group"><label>คำนำหน้า *</label>
+        <select id="popPrefix">
+          <option value="">-- เลือก --</option>
+          <option value="นาย">นาย</option>
+          <option value="นาง">นาง</option>
+          <option value="นางสาว">นางสาว</option>
+          <option value="เด็กชาย">เด็กชาย</option>
+          <option value="เด็กหญิง">เด็กหญิง</option>
+          <option value="ด.ช.">ด.ช.</option>
+          <option value="ด.ญ.">ด.ญ.</option>
+          <option value="พระ">พระ</option>
+          <option value="สามเณร">สามเณร</option>
+        </select>
+      </div>
+      <div class="form-group"><label>ชื่อ *</label><input id="popFirstName" placeholder="ชื่อ" /></div>
+      <div class="form-group"><label>นามสกุล</label><input id="popLastName" placeholder="นามสกุล" /></div>
+    </div>
     <div class="form-row">
       <div class="form-group"><label>เพศ</label>
         <select id="popGender"><option value="">-- เลือก --</option><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select>
       </div>
-      <div class="form-group"><label>วันเกิด (ค.ศ.)</label><input type="date" id="popBirthdate" oninput="calcPopAge()" /></div>
+      <div class="form-group"><label>วันเกิด (พ.ศ.)</label>
+        <div style="display:flex;gap:4px;align-items:center">
+          <input type="number" id="popBirthDay" placeholder="วัน" min="1" max="31" style="width:58px;padding:8px 5px;text-align:center;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" oninput="calcPopAge()" />
+          <select id="popBirthMonth" style="flex:1;padding:8px 6px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" onchange="calcPopAge()">
+            <option value="">เดือน</option>
+            <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option>
+            <option value="3">มีนาคม</option><option value="4">เมษายน</option>
+            <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option>
+            <option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+            <option value="9">กันยายน</option><option value="10">ตุลาคม</option>
+            <option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+          </select>
+          <input type="number" id="popBirthYear" placeholder="ปี พ.ศ." min="2400" max="2580" style="width:90px;padding:8px 5px;text-align:center;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" oninput="calcPopAge()" />
+        </div>
+      </div>
     </div>
-    <div id="popAgeDisplay" style="display:none;background:var(--green-pale);border-radius:8px;padding:6px 12px;margin-bottom:12px;font-size:13px;font-weight:700;color:var(--green-dark)"></div>
+    <div id="popAgeDisplay" style="display:none;background:var(--green-pale);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;font-weight:700;color:var(--green-dark)">🎂 อายุ —</div>
     <div class="form-row">
       <div class="form-group"><label>เลขบัตรประชาชน</label><input id="popIdCard" placeholder="13 หลัก" maxlength="13" /></div>
       <div class="form-group"><label>เบอร์โทร</label><input id="popPhone" placeholder="0XX-XXX-XXXX" /></div>
@@ -1227,7 +1258,6 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
     <button class="btn-primary" style="width:100%;margin-top:8px" onclick="savePop()">💾 บันทึก</button>
   </div>
 </div>
-
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- ══════════════════════════════════════════════════════════════ -->
@@ -2596,33 +2626,10 @@ function renderPopTable(){
         return`<tr><td>${p.village||''}</td><td>${p.house_number||''}</td><td>${p.full_name||''}</td><td>${p.gender||''}</td><td>${bd}</td><td>${a.y>0?a.y+' ปี':'-'}</td><td>${fmtIdCard(p.id_card)}</td><td>${p.phone||''}</td>${editBtns}</tr>`;
       }).join('');
 }
-function openAddPopModal(){
-  editingPopId=null;
-  document.getElementById('popEditTitle').textContent='➕ เพิ่มประชากร';
-  ['popVillage','popGender'].forEach(id=>document.getElementById(id).value='');
-  ['popHouseNo','popFullName','popBirthdate','popIdCard','popPhone'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('popAgeDisplay').style.display='none';
-  openModal('modalPopEdit');
-}
-function openEditPop(id){
-  const p=popData.find(x=>x.id===id);if(!p)return;
-  editingPopId=id;
-  document.getElementById('popEditTitle').textContent='✏️ แก้ไขข้อมูลประชากร';
-  document.getElementById('popVillage').value=p.village||'';
-  document.getElementById('popHouseNo').value=p.house_number||'';
-  document.getElementById('popFullName').value=p.full_name||'';
-  document.getElementById('popGender').value=p.gender||'';
-  document.getElementById('popBirthdate').value=p.birthdate?p.birthdate.substring(0,10):'';
-  document.getElementById('popIdCard').value=p.id_card||'';
-  document.getElementById('popPhone').value=p.phone||'';
-  calcPopAge();openModal('modalPopEdit');
-}
-function calcPopAge(){const b=document.getElementById('popBirthdate').value;const el=document.getElementById('popAgeDisplay');if(!b){el.style.display='none';return;}const a=calcAge(b);const d=new Date(b);const be=d.toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});el.textContent=`วันเกิด ${be} — อายุ ${a.y} ปี ${a.m} เดือน ${a.d} วัน`;el.style.display='block';}
-async function savePop(){
-  const full_name=document.getElementById('popFullName').value.trim(),village=parseInt(document.getElementById('popVillage').value)||null;
-  if(!full_name)return toast('กรุณากรอกชื่อ-สกุล','error');
-  if(!village)return toast('กรุณาเลือกหมู่','error');
-  const payload={village,house_number:document.getElementById('popHouseNo').value.trim()||null,full_name,gender:document.getElementById('popGender').value||null,birthdate:document.getElementById('popBirthdate').value||null,id_card:document.getElementById('popIdCard').value.trim()||null,phone:document.getElementById('popPhone').value.trim()||null};
+function openAddPopModal(){editingPopId=null;document.getElementById('popEditTitle').textContent='➕ เพิ่มประชากร';['popVillage','popGender','popPrefix','popBirthMonth'].forEach(id=>document.getElementById(id).value='');['popHouseNo','popFirstName','popLastName','popBirthDay','popBirthYear','popIdCard','popPhone'].forEach(id=>document.getElementById(id).value='');document.getElementById('popAgeDisplay').style.display='none';openModal('modalPopEdit');}
+function openEditPop(id){const p=popData.find(x=>x.id===id);if(!p)return;editingPopId=id;document.getElementById('popEditTitle').textContent='✏️ แก้ไขข้อมูลประชากร';document.getElementById('popVillage').value=p.village||'';document.getElementById('popHouseNo').value=p.house_number||'';const PREFIXES=['นาย','นาง','นางสาว','เด็กชาย','เด็กหญิง','ด.ช.','ด.ญ.','พระ','สามเณร'];let prefix='',nameRest=p.full_name||'';for(const pr of PREFIXES){if(nameRest.startsWith(pr)){prefix=pr;nameRest=nameRest.slice(pr.length).trim();break;}}const parts=nameRest.split(' ');document.getElementById('popPrefix').value=prefix;document.getElementById('popFirstName').value=parts[0]||'';document.getElementById('popLastName').value=parts.slice(1).join(' ')||'';document.getElementById('popGender').value=p.gender||'';if(p.birthdate){const d=new Date(p.birthdate.substring(0,10)+'T12:00:00');document.getElementById('popBirthDay').value=d.getDate();document.getElementById('popBirthMonth').value=d.getMonth()+1;document.getElementById('popBirthYear').value=d.getFullYear()+543;}else{['popBirthDay','popBirthYear'].forEach(id=>document.getElementById(id).value='');document.getElementById('popBirthMonth').value='';}document.getElementById('popIdCard').value=p.id_card||'';document.getElementById('popPhone').value=p.phone||'';calcPopAge();openModal('modalPopEdit');}
+function calcPopAge(){const day=document.getElementById('popBirthDay').value;const month=document.getElementById('popBirthMonth').value;const yearBE=document.getElementById('popBirthYear').value;const el=document.getElementById('popAgeDisplay');if(!day||!month||!yearBE){el.style.display='none';return;}const yearCE=parseInt(yearBE)-543;const isoDate=yearCE+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');const a=calcAge(isoDate);const MFULL=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];el.innerHTML='🎂 วันเกิด '+day+' '+MFULL[parseInt(month)-1]+' '+yearBE+' &nbsp;|&nbsp; อายุ <strong>'+a.y+' ปี '+a.m+' เดือน '+a.d+' วัน</strong>';el.style.display='block';}const a=calcAge(b);const d=new Date(b);const be=d.toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});el.textContent=`วันเกิด ${be} — อายุ ${a.y} ปี ${a.m} เดือน ${a.d} วัน`;el.style.display='block';}
+async function savePop(){const prefix=document.getElementById('popPrefix').value.trim();const firstName=document.getElementById('popFirstName').value.trim();const lastName=document.getElementById('popLastName').value.trim();const full_name=(prefix+firstName+(lastName?' '+lastName:'')).trim();const village=parseInt(document.getElementById('popVillage').value)||null;if(!firstName)return toast('กรุณากรอกชื่อ','error');if(!village)return toast('กรุณาเลือกหมู่','error');let birthdate=null;const bDay=document.getElementById('popBirthDay').value;const bMonth=document.getElementById('popBirthMonth').value;const bYearBE=document.getElementById('popBirthYear').value;if(bDay&&bMonth&&bYearBE){const bYearCE=parseInt(bYearBE)-543;birthdate=bYearCE+'-'+String(bMonth).padStart(2,'0')+'-'+String(bDay).padStart(2,'0');}const payload={village,house_number:document.getElementById('popHouseNo').value.trim()||null,full_name,gender:document.getElementById('popGender').value||null,birthdate,id_card:document.getElementById('popIdCard').value.trim()||null,phone:document.getElementById('popPhone').value.trim()||null};
   const btn=document.querySelector('#modalPopEdit .btn-primary');if(btn){btn.disabled=true;btn.textContent='กำลังบันทึก...';}
   try{let err;if(editingPopId){({error:err}=await sb.from('population').update(payload).eq('id',editingPopId));}else{({error:err}=await sb.from('population').insert(payload));}if(err)throw err;closeModal('modalPopEdit');toast(editingPopId?'แก้ไขเรียบร้อย':'เพิ่มประชากรเรียบร้อย');await loadPopulation();}catch(e){toast('เกิดข้อผิดพลาด: '+(e.message||''),'error');}
   if(btn){btn.disabled=false;btn.textContent='💾 บันทึก';}
