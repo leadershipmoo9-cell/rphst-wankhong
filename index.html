@@ -2577,54 +2577,132 @@ function appendChatMessage(m){const el=document.getElementById('chatMessages');e
 function chatBubbleHtml(m){const isMe=m.sender_name===chatName;const t=new Date(m.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});return`<div class="chat-bubble-wrap ${isMe?'me':'other'}"><div class="chat-avatar">${(m.sender_name||'?')[0]}</div><div><div class="chat-sender">${isMe?'':m.sender_name}</div><div class="chat-bubble">${m.message||''}</div><div class="chat-time">${t}</div></div></div>`;}
 async function sendChat(){const inp=document.getElementById('chatInput'),msg=inp.value.trim();if(!msg)return;inp.value='';await sb.from('chat_messages').insert({sender_name:chatName,message:msg});}
 
-// ── POPULATION ──
-async function loadPopulation(){
-  const gate=document.getElementById('popAdminGate');
-  const content=document.getElementById('popAdminContent');
-  if(!isAdmin){
-    gate.style.display='block';
-    content.style.display='none';
+// ── POPULATION (แก้ไข: ค้นหาฝั่งเซิร์ฟเวอร์ + ตรวจสอบการบันทึก) ──
+let popTotal = 0;
+let popSearchTimer = null;
+
+function buildPopQuery() {
+  const village = document.getElementById('filterPopVillage').value;
+  const house = (document.getElementById('filterPopHouse').value || '').trim();
+  const name = (document.getElementById('filterPopName').value || '').trim().replace(/[,()%]/g, '');
+  let q = sb.from('population').select('*', { count: 'exact' })
+    .order('village', { ascending: true })
+    .order('house_number', { ascending: true });
+  if (village) q = q.eq('village', parseInt(village));
+  if (house) q = q.ilike('house_number', '%' + house + '%');
+  if (name) {
+    if (/^\d+$/.test(name)) q = q.eq('id_card', name);
+    else q = q.ilike('full_name', '%' + name + '%');
+  }
+  return q;
+}
+
+async function loadPopulation() {
+  const gate = document.getElementById('popAdminGate');
+  const content = document.getElementById('popAdminContent');
+  if (!isAdmin) {
+    gate.style.display = 'block';
+    content.style.display = 'none';
     return;
   }
-  gate.style.display='none';
-  content.style.display='block';
-  popOffset=0;popData=[];
-  const village=document.getElementById('filterPopVillage').value;
-  let q=sb.from('population').select('*',{count:'exact'}).order('village',{ascending:true}).order('house_number',{ascending:true}).limit(POP_PAGE);
-  if(village)q=q.eq('village',parseInt(village));
-  const {data,count}=await q;
-  popData=data||[];
-  document.getElementById('popStats').textContent=`แสดง ${popData.length} จากทั้งหมด ${count||0} ราย`;
-  document.getElementById('popLoadMoreBtn').style.display=(count||0)>POP_PAGE?'inline-block':'none';
+  gate.style.display = 'none';
+  content.style.display = 'block';
+  popOffset = 0;
+  popData = [];
+  const { data, count, error } = await buildPopQuery().range(0, POP_PAGE - 1);
+  if (error) { toast('โหลดข้อมูลไม่สำเร็จ: ' + error.message, 'error'); return; }
+  popData = data || [];
+  popTotal = count || 0;
+  document.getElementById('popStats').textContent = `แสดง ${popData.length} จากทั้งหมด ${popTotal} ราย`;
+  document.getElementById('popLoadMoreBtn').style.display = popTotal > popData.length ? 'inline-block' : 'none';
   renderPopTable();
 }
-async function loadPopulationMore(){
-  popOffset+=POP_PAGE;
-  const village=document.getElementById('filterPopVillage').value;
-  let q=sb.from('population').select('*').order('village',{ascending:true}).order('house_number',{ascending:true}).range(popOffset,popOffset+POP_PAGE-1);
-  if(village)q=q.eq('village',parseInt(village));
-  const {data}=await q;
-  popData=[...popData,...(data||[])];
+
+async function loadPopulationMore() {
+  popOffset += POP_PAGE;
+  const { data, error } = await buildPopQuery().range(popOffset, popOffset + POP_PAGE - 1);
+  if (error) { toast('โหลดข้อมูลไม่สำเร็จ: ' + error.message, 'error'); return; }
+  popData = [...popData, ...(data || [])];
+  document.getElementById('popStats').textContent = `แสดง ${popData.length} จากทั้งหมด ${popTotal} ราย`;
+  if (popData.length >= popTotal || !data || data.length < POP_PAGE)
+    document.getElementById('popLoadMoreBtn').style.display = 'none';
   renderPopTable();
-  if(!data||data.length<POP_PAGE) document.getElementById('popLoadMoreBtn').style.display='none';
 }
-function filterPopTable(){renderPopTable();}
-function renderPopTable(){
-  const name=(document.getElementById('filterPopName').value||'').toLowerCase();
-  const house=(document.getElementById('filterPopHouse').value||'').toLowerCase();
-  const list=popData.filter(p=>{
-    const nm=!name||(p.full_name||'').toLowerCase().includes(name)||(p.id_card||'').includes(name);
-    const hm=!house||(p.house_number||'').toLowerCase().includes(house);
-    return nm&&hm;
-  });
-  document.getElementById('popTable').innerHTML=list.length===0
-    ?'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--gray-mid)">ไม่มีข้อมูล</td></tr>'
-    :list.map(p=>{
-        const a=calcAge(p.birthdate);
-        const bd=p.birthdate?new Date(p.birthdate).toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'}):'-';
-        const editBtns=isAdmin?`<td><button class="btn-edit" style="font-size:11px;margin-right:4px" onclick="openEditPop('${p.id}')">✏️</button><button class="btn-danger" style="font-size:11px" onclick="deletePop('${p.id}')">ลบ</button></td>`:'<td></td>';
-        return`<tr><td>${p.village||''}</td><td>${p.house_number||''}</td><td>${p.full_name||''}</td><td>${p.gender||''}</td><td>${bd}</td><td>${a.y>0?a.y+' ปี':'-'}</td><td>${fmtIdCard(p.id_card)}</td><td>${p.phone||''}</td>${editBtns}</tr>`;
+
+// ค้นหาแบบหน่วงเวลา (พิมพ์เสร็จแล้วค่อยค้นหา) ค้นจากฐานข้อมูลทั้งหมด
+function filterPopTable() {
+  clearTimeout(popSearchTimer);
+  popSearchTimer = setTimeout(loadPopulation, 350);
+}
+
+function renderPopTable() {
+  document.getElementById('popTable').innerHTML = popData.length === 0
+    ? '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--gray-mid)">ไม่มีข้อมูล</td></tr>'
+    : popData.map(p => {
+        const a = calcAge(p.birthdate);
+        const bd = p.birthdate ? new Date(p.birthdate).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+        const editBtns = isAdmin
+          ? `<td><button class="btn-edit" style="font-size:11px;margin-right:4px" onclick="openEditPop('${p.id}')">✏️</button><button class="btn-danger" style="font-size:11px" onclick="deletePop('${p.id}')">ลบ</button></td>`
+          : '<td></td>';
+        return `<tr><td>${p.village || ''}</td><td>${p.house_number || ''}</td><td>${p.full_name || ''}</td><td>${p.gender || ''}</td><td>${bd}</td><td>${a.y > 0 ? a.y + ' ปี' : '-'}</td><td>${fmtIdCard(p.id_card)}</td><td>${p.phone || ''}</td>${editBtns}</tr>`;
       }).join('');
+}
+
+async function savePop() {
+  const prefix = document.getElementById('popPrefix').value.trim();
+  const firstName = document.getElementById('popFirstName').value.trim();
+  const lastName = document.getElementById('popLastName').value.trim();
+  const full_name = (prefix + firstName + (lastName ? ' ' + lastName : '')).trim();
+  const village = parseInt(document.getElementById('popVillage').value) || null;
+  if (!firstName) return toast('กรุณากรอกชื่อ', 'error');
+  if (!village) return toast('กรุณาเลือกหมู่', 'error');
+
+  let birthdate = null;
+  const bDay = document.getElementById('popBirthDay').value;
+  const bMonth = document.getElementById('popBirthMonth').value;
+  const bYearBE = document.getElementById('popBirthYear').value;
+  if (bDay && bMonth && bYearBE) {
+    const bYearCE = parseInt(bYearBE) - 543;
+    birthdate = bYearCE + '-' + String(bMonth).padStart(2, '0') + '-' + String(bDay).padStart(2, '0');
+  }
+
+  const payload = {
+    village,
+    house_number: document.getElementById('popHouseNo').value.trim() || null,
+    full_name,
+    gender: document.getElementById('popGender').value || null,
+    birthdate,
+    id_card: document.getElementById('popIdCard').value.trim() || null,
+    phone: document.getElementById('popPhone').value.trim() || null
+  };
+
+  const btn = document.querySelector('#modalPopEdit .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'กำลังบันทึก...'; }
+  const wasEditing = !!editingPopId;
+  try {
+    let res;
+    if (editingPopId) res = await sb.from('population').update(payload).eq('id', editingPopId).select();
+    else res = await sb.from('population').insert(payload).select();
+    if (res.error) throw res.error;
+    // ตรวจสอบว่าบันทึกแล้วอ่านกลับมาได้จริง (กรณีติด RLS จะได้ข้อมูลว่าง)
+    if (!res.data || res.data.length === 0)
+      throw new Error('บันทึกไม่เข้าฐานข้อมูล (ตรวจสอบ RLS policy ของตาราง population ใน Supabase)');
+
+    closeModal('modalPopEdit');
+    toast(wasEditing ? 'แก้ไขเรียบร้อย' : 'เพิ่มประชากรเรียบร้อย ✅');
+
+    // ปรับตัวกรองให้แสดงรายการที่เพิ่งบันทึก
+    if (!wasEditing) {
+      document.getElementById('filterPopVillage').value = String(village);
+      document.getElementById('filterPopHouse').value = '';
+      document.getElementById('filterPopName').value = firstName;
+    }
+    editingPopId = null;
+    await loadPopulation();
+  } catch (e) {
+    toast('เกิดข้อผิดพลาด: ' + (e.message || ''), 'error');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '💾 บันทึก'; }
 }
 function openAddPopModal(){editingPopId=null;document.getElementById('popEditTitle').textContent='➕ เพิ่มประชากร';['popVillage','popGender','popPrefix','popBirthMonth'].forEach(id=>document.getElementById(id).value='');['popHouseNo','popFirstName','popLastName','popBirthDay','popBirthYear','popIdCard','popPhone'].forEach(id=>document.getElementById(id).value='');document.getElementById('popAgeDisplay').style.display='none';openModal('modalPopEdit');}
 function openEditPop(id){const p=popData.find(x=>x.id===id);if(!p)return;editingPopId=id;document.getElementById('popEditTitle').textContent='✏️ แก้ไขข้อมูลประชากร';document.getElementById('popVillage').value=p.village||'';document.getElementById('popHouseNo').value=p.house_number||'';const PREFIXES=['นาย','นาง','นางสาว','เด็กชาย','เด็กหญิง','ด.ช.','ด.ญ.','พระ','สามเณร'];let prefix='',nameRest=p.full_name||'';for(const pr of PREFIXES){if(nameRest.startsWith(pr)){prefix=pr;nameRest=nameRest.slice(pr.length).trim();break;}}const parts=nameRest.split(' ');document.getElementById('popPrefix').value=prefix;document.getElementById('popFirstName').value=parts[0]||'';document.getElementById('popLastName').value=parts.slice(1).join(' ')||'';document.getElementById('popGender').value=p.gender||'';if(p.birthdate){const d=new Date(p.birthdate.substring(0,10)+'T12:00:00');document.getElementById('popBirthDay').value=d.getDate();document.getElementById('popBirthMonth').value=d.getMonth()+1;document.getElementById('popBirthYear').value=d.getFullYear()+543;}else{['popBirthDay','popBirthYear'].forEach(id=>document.getElementById(id).value='');document.getElementById('popBirthMonth').value='';}document.getElementById('popIdCard').value=p.id_card||'';document.getElementById('popPhone').value=p.phone||'';calcPopAge();openModal('modalPopEdit');}
