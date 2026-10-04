@@ -2014,51 +2014,80 @@ async function openChildNutritionForm() {
   openModal('modalChildNutrition');
 }
 
+let cnSearchTimer = null;
+
+function cnLocalIso(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// ค้นหาเด็ก 0-5 ปี จากฐานข้อมูลโดยตรง (กรองหมู่ / วันเกิด / บ้านเลขที่ / ชื่อ ที่ฝั่ง Supabase)
 async function loadChildrenByVillage() {
   const village = document.getElementById('cnVillage').value;
-  if(!village) { cnChildCache=[]; return; }
-  const {data} = await sb.from('population').select('id,village,house_number,full_name,gender,birthdate').eq('village',parseInt(village)).limit(500);
-  // Filter 0-5 years
+  const el = document.getElementById('cnPopList');
+  if(!village) {
+    cnChildCache = [];
+    el.style.display = 'block';
+    el.innerHTML = '<div style="padding:12px 14px;color:var(--gray-mid);font-size:13px">กรุณาเลือกหมู่ที่ก่อน</div>';
+    return;
+  }
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px 14px;color:var(--gray-mid);font-size:13px">⏳ กำลังค้นหา...</div>';
+
+  const houseNo = (document.getElementById('cnPopHouseNo').value||'').trim();
+  const search = (document.getElementById('cnPopSearch').value||'').trim().replace(/[,()%]/g,'');
   const now = new Date();
+  // เด็กอายุไม่เกิน 60 เดือน (เผื่อ 1 เดือน แล้วกรองซ้ำด้านล่าง)
+  const minDate = new Date(now.getFullYear(), now.getMonth()-61, now.getDate());
+
+  let q = sb.from('population')
+    .select('id,village,house_number,full_name,gender,birthdate')
+    .eq('village', parseInt(village))
+    .gte('birthdate', cnLocalIso(minDate))
+    .lte('birthdate', cnLocalIso(now))
+    .order('house_number', {ascending:true})
+    .limit(100);
+  if(houseNo) q = q.ilike('house_number', '%'+houseNo+'%');
+  if(search) q = q.ilike('full_name', '%'+search+'%');
+
+  const {data, error} = await q;
+  if(error) {
+    el.innerHTML = '<div style="padding:12px 14px;color:#c62828;font-size:13px">❌ ค้นหาไม่สำเร็จ: '+error.message+'</div>';
+    return;
+  }
   cnChildCache = (data||[]).filter(p=>{
     if(!p.birthdate) return false;
     const a = calcAge(p.birthdate);
     return a.totalMonths >= 0 && a.totalMonths <= 60;
   });
-  filterCnChildList();
+  renderCnChildList();
 }
 
+// พิมพ์บ้านเลขที่/ชื่อ แล้วค้นหาใหม่ (หน่วงเวลาเล็กน้อย)
 function filterCnChildList() {
-  const search = (document.getElementById('cnPopSearch').value||'').toLowerCase();
-  const houseNo = (document.getElementById('cnPopHouseNo').value||'').toLowerCase();
+  if(!document.getElementById('cnVillage').value) return;
+  clearTimeout(cnSearchTimer);
+  cnSearchTimer = setTimeout(loadChildrenByVillage, 300);
+}
+
+function renderCnChildList() {
   const el = document.getElementById('cnPopList');
-  if(cnChildCache.length === 0) { el.style.display='none'; return; }
-  let list = cnChildCache;
-  if(search || houseNo) {
-    list = cnChildCache.filter(p=>{
-      const nameMatch = !search || p.full_name.toLowerCase().includes(search);
-      const houseMatch = !houseNo || (p.house_number||'').toLowerCase().includes(houseNo);
-      return nameMatch && houseMatch;
-    });
-  }
-  list = list.slice(0,30);
-  if(list.length === 0) {
-    el.style.display='block';
-    el.innerHTML='<div style="padding:12px 14px;color:var(--gray-mid);font-size:13px">ไม่พบข้อมูลเด็กอายุ 0-5 ปี ในหมู่นี้</div>';
+  el.style.display = 'block';
+  if(cnChildCache.length === 0) {
+    el.innerHTML = '<div style="padding:12px 14px;color:var(--gray-mid);font-size:13px">ไม่พบเด็กอายุ 0-5 ปี ตามเงื่อนไขนี้ (ตรวจสอบวันเกิดในฐานข้อมูลประชากร หรือพิมพ์ชื่อด้านล่างเองได้)</div>';
     return;
   }
-  el.style.display = 'block';
-  el.innerHTML = list.map(p=>{
+  el.innerHTML = cnChildCache.map(p=>{
     const a = calcAge(p.birthdate);
-    return `<div onclick='selectCnChild(${JSON.stringify(p)})' style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eef2ef;font-size:13px" onmouseenter="this.style.background='var(--green-pale)'" onmouseleave="this.style.background=''">
+    return `<div onclick="selectCnChild('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eef2ef;font-size:13px" onmouseenter="this.style.background='var(--green-pale)'" onmouseleave="this.style.background=''">
       <strong>${p.full_name}</strong>
       <span style="margin-left:8px;font-size:11px;color:var(--gray-mid)">บ้านเลขที่ ${p.house_number||'-'} | เพศ${p.gender||'-'} | อายุ ${a.y} ปี ${a.m} เดือน (${a.totalMonths} เดือน)</span>
     </div>`;
   }).join('');
 }
 
-function selectCnChild(p) {
-  if(typeof p==='string') p=JSON.parse(p);
+function selectCnChild(id) {
+  const p = cnChildCache.find(x=>String(x.id)===String(id));
+  if(!p) return;
   document.getElementById('cnFullName').value = p.full_name||'';
   document.getElementById('cnGender').value = p.gender||'';
   if(p.birthdate) { document.getElementById('cnBirth').value = p.birthdate.substring(0,10); calcCnAge(); }
