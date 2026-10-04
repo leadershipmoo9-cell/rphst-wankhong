@@ -2035,9 +2035,9 @@ async function loadChildrenByVillage() {
 
   const houseNo = (document.getElementById('cnPopHouseNo').value||'').trim();
   const search = (document.getElementById('cnPopSearch').value||'').trim().replace(/[,()%]/g,'');
-  const now = new Date();
-  // เด็กอายุไม่เกิน 60 เดือน (เผื่อ 1 เดือน แล้วกรองซ้ำด้านล่าง)
-  const minDate = new Date(now.getFullYear(), now.getMonth()-61, now.getDate());
+    const now = new Date();
+  // เด็กที่ยังไม่ครบ 6 ปี (วันเกิดต้องหลังวันนี้ย้อนไป 6 ปี)
+  const minDate = new Date(now.getFullYear()-6, now.getMonth(), now.getDate()+1);
 
   let q = sb.from('population')
     .select('id,village,house_number,full_name,gender,birthdate')
@@ -2054,10 +2054,10 @@ async function loadChildrenByVillage() {
     el.innerHTML = '<div style="padding:12px 14px;color:#c62828;font-size:13px">❌ ค้นหาไม่สำเร็จ: '+error.message+'</div>';
     return;
   }
-  cnChildCache = (data||[]).filter(p=>{
+    cnChildCache = (data||[]).filter(p=>{
     if(!p.birthdate) return false;
     const a = calcAge(p.birthdate);
-    return a.totalMonths >= 0 && a.totalMonths <= 60;
+    return a.y >= 0 && a.y <= 5;
   });
   renderCnChildList();
 }
