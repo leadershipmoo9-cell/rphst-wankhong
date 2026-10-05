@@ -220,6 +220,18 @@
     .sql-hint h4{font-family:'Kanit',sans-serif;font-size:13px;color:#4527a0;margin-bottom:8px}
     .sql-hint pre{font-size:11px;overflow-x:auto;color:#4527a0;background:#ede7f6;padding:10px;border-radius:6px;line-height:1.6}
     @media(max-width:600px){.site-header h1{font-size:15px}.logo-circle{width:58px;height:58px}.nav-btn{padding:10px 12px;font-size:12px}.main-content{padding:16px 10px}.member-grid{grid-template-columns:repeat(auto-fill,minmax(135px,1fr))}.dashboard-charts{grid-template-columns:1fr}.hero-banner{height:220px}.hero-title{font-size:20px}}
+      /* chat: emoji + image */
+    .chat-wrap{position:relative}
+    .chat-tool-btn{width:40px;height:40px;border-radius:50%;background:var(--green-pale);border:none;cursor:pointer;font-size:19px;flex-shrink:0;transition:.2s}
+    .chat-tool-btn:hover{background:#cfe8d9}
+    .chat-emoji-panel{display:none;position:absolute;left:12px;bottom:72px;width:min(340px,calc(100% - 24px));max-height:220px;overflow-y:auto;background:white;border:1.5px solid var(--green-light);border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:8px;z-index:5;grid-template-columns:repeat(8,1fr);gap:2px}
+    .chat-emoji-panel.open{display:grid}
+    .chat-emoji-panel button{background:none;border:none;font-size:22px;cursor:pointer;border-radius:6px;padding:4px 0}
+    .chat-emoji-panel button:hover{background:var(--green-pale)}
+    .chat-img{display:block;width:240px;max-width:100%;max-height:300px;object-fit:cover;border-radius:10px;cursor:pointer;margin-top:4px}
+    .chat-img-preview{display:none;padding:8px 14px;background:#f5f7f6;border-top:1.5px solid var(--green-pale);align-items:center;gap:10px;flex-shrink:0}
+    .chat-img-preview.show{display:flex}
+    .chat-img-preview img{width:56px;height:56px;object-fit:cover;border-radius:8px}
   </style>
 </head>
 <body>
@@ -589,9 +601,18 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
       <div class="chat-wrap">
         <div class="chat-header"><div class="online-dot"></div><h3>ห้องแชท อสม. รพสต.แวนโค้ง</h3></div>
         <div class="chat-messages" id="chatMessages"></div>
+                <div class="chat-emoji-panel" id="chatEmojiPanel"></div>
+        <div class="chat-img-preview" id="chatImgPreview">
+          <img id="chatImgThumb" alt="" />
+          <span id="chatImgName" style="flex:1;font-size:12px;color:var(--text-sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+          <button class="btn-danger" onclick="clearChatImage()">ยกเลิก</button>
+        </div>
         <div class="chat-input-area">
+          <button class="chat-tool-btn" type="button" onclick="toggleEmojiPanel()" title="อิโมจิ">😊</button>
+          <button class="chat-tool-btn" type="button" onclick="document.getElementById('chatImgFile').click()" title="ส่งรูปภาพ">📷</button>
+          <input type="file" id="chatImgFile" accept="image/*" style="display:none" onchange="pickChatImage(this)" />
           <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
-          <button class="chat-send-btn" onclick="sendChat()">➤</button>
+          <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">➤</button>
         </div>
       </div>
     </div>
@@ -2929,18 +2950,135 @@ async function exportPopulationExcel(){
 function initChat(){if(chatName){document.getElementById('chatLoginBox').style.display='none';document.getElementById('chatRoom').style.display='block';document.getElementById('chatUserBadge').textContent='👤 '+chatName;loadChatMessages();}}
 function joinChat(){const n=document.getElementById('chatNameInput').value.trim();if(!n)return toast('กรุณากรอกชื่อ','error');chatName=n;localStorage.setItem('chat_name_wk',n);document.getElementById('chatLoginBox').style.display='none';document.getElementById('chatRoom').style.display='block';document.getElementById('chatUserBadge').textContent='👤 '+n;loadChatMessages();}
 function leaveChat(){chatName='';localStorage.removeItem('chat_name_wk');document.getElementById('chatLoginBox').style.display='block';document.getElementById('chatRoom').style.display='none';}
-let chatSub=null;
-async function loadChatMessages(){
-  const {data}=await sb.from('chat_messages').select('*').order('created_at',{ascending:true}).limit(100);
-  renderChatMessages(data||[]);
-  if(chatSub){chatSub.unsubscribe();chatSub=null;}
-  chatSub=sb.channel('chat').on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages'},(payload)=>{appendChatMessage(payload.new);}).subscribe();
-}
-function renderChatMessages(list){const el=document.getElementById('chatMessages');el.innerHTML=list.map(m=>chatBubbleHtml(m)).join('');el.scrollTop=el.scrollHeight;}
-function appendChatMessage(m){const el=document.getElementById('chatMessages');el.insertAdjacentHTML('beforeend',chatBubbleHtml(m));el.scrollTop=el.scrollHeight;}
-function chatBubbleHtml(m){const isMe=m.sender_name===chatName;const t=new Date(m.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});return`<div class="chat-bubble-wrap ${isMe?'me':'other'}"><div class="chat-avatar">${(m.sender_name||'?')[0]}</div><div><div class="chat-sender">${isMe?'':m.sender_name}</div><div class="chat-bubble">${m.message||''}</div><div class="chat-time">${t}</div></div></div>`;}
-async function sendChat(){const inp=document.getElementById('chatInput'),msg=inp.value.trim();if(!msg)return;inp.value='';await sb.from('chat_messages').insert({sender_name:chatName,message:msg});}
+// ── CHAT (แก้ไข: แสดงข้อความทันที + ส่งรูป + อิโมจิ) ──
+let chatSub = null;
+let chatPoll = null;
+let chatSeen = new Set();
+let chatImageFile = null;
+const CHAT_EMOJIS = ['😀','😁','😂','🤣','😊','😍','🥰','😘','😎','🤗','🤔','😅','😢','😭','😡','😱','😴','🙏','👍','👎','👏','🙌','💪','👌','✌️','🤝','❤️','💚','💛','💙','💔','🔥','⭐','🎉','🎂','🌸','🌿','🌞','🌧️','🍀','🏥','💊','🩺','💉','😷','🤒','🚑','✅','❌','⚠️','📢'];
 
+function chatEsc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function chatScrollBottom() {
+  const el = document.getElementById('chatMessages');
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+async function loadChatMessages() {
+  buildEmojiPanel();
+  // โหลด 100 ข้อความล่าสุด (เรียงใหม่→เก่า แล้วกลับด้านให้แสดงเก่า→ใหม่)
+  const { data, error } = await sb.from('chat_messages').select('*').order('created_at', { ascending: false }).limit(100);
+  if (error) toast('โหลดแชทไม่สำเร็จ: ' + error.message, 'error');
+  const list = (data || []).reverse();
+  chatSeen = new Set(list.map(m => m.id));
+  renderChatMessages(list);
+  if (chatSub) { sb.removeChannel(chatSub); chatSub = null; }
+  chatSub = sb.channel('chat-room')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, p => appendChatMessage(p.new))
+    .subscribe();
+  // สำรอง: ดึงข้อความใหม่ทุก 4 วินาที เผื่อ Realtime ไม่ทำงาน
+  clearInterval(chatPoll);
+  chatPoll = setInterval(pollChat, 4000);
+}
+
+async function pollChat() {
+  const page = document.getElementById('page-chat');
+  if (!chatName || !page || !page.classList.contains('active')) return;
+  const { data } = await sb.from('chat_messages').select('*').order('created_at', { ascending: false }).limit(30);
+  (data || []).reverse().forEach(appendChatMessage);
+}
+
+function renderChatMessages(list) {
+  const el = document.getElementById('chatMessages');
+  el.innerHTML = list.length
+    ? list.map(chatBubbleHtml).join('')
+    : '<div style="text-align:center;color:var(--gray-mid);font-size:13px;padding:30px">ยังไม่มีข้อความ เริ่มสนทนาได้เลย 👋</div>';
+  el.scrollTop = el.scrollHeight;
+}
+
+function appendChatMessage(m) {
+  if (!m || chatSeen.has(m.id)) return; // กันข้อความซ้ำ
+  chatSeen.add(m.id);
+  const el = document.getElementById('chatMessages');
+  if (el.querySelector('.chat-bubble-wrap') === null) el.innerHTML = '';
+  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  el.insertAdjacentHTML('beforeend', chatBubbleHtml(m));
+  if (nearBottom || m.sender_name === chatName) el.scrollTop = el.scrollHeight;
+}
+
+function chatBubbleHtml(m) {
+  const isMe = m.sender_name === chatName;
+  const t = m.created_at ? new Date(m.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '';
+  const text = m.message ? `<div>${chatEsc(m.message).replace(/\n/g, '<br>')}</div>` : '';
+  const img = m.image_url
+    ? `<a href="${chatEsc(m.image_url)}" target="_blank" rel="noopener"><img class="chat-img" src="${chatEsc(m.image_url)}" loading="lazy" onload="chatScrollBottom()" /></a>`
+    : '';
+  return `<div class="chat-bubble-wrap ${isMe ? 'me' : 'other'}"><div class="chat-avatar">${chatEsc(Array.from(m.sender_name || '?')[0])}</div><div><div class="chat-sender">${isMe ? '' : chatEsc(m.sender_name)}</div><div class="chat-bubble">${text}${img}</div><div class="chat-time">${t}</div></div></div>`;
+}
+
+async function sendChat() {
+  const inp = document.getElementById('chatInput');
+  const msg = inp.value.trim();
+  if (!msg && !chatImageFile) return;
+  if (!chatName) return toast('กรุณาเข้าร่วมห้องแชทก่อน', 'error');
+  const btn = document.getElementById('chatSendBtn');
+  btn.disabled = true;
+  try {
+    let image_url = null;
+    if (chatImageFile) { toast('กำลังอัปโหลดรูปภาพ...'); image_url = await uploadCloudinary(chatImageFile); }
+    const payload = { sender_name: chatName, message: msg || '' };
+    if (image_url) payload.image_url = image_url;
+    const { data, error } = await sb.from('chat_messages').insert(payload).select();
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('ส่งแล้วแต่อ่านกลับไม่ได้ (ตรวจสอบ RLS policy ของตาราง chat_messages)');
+    inp.value = '';
+    clearChatImage();
+    document.getElementById('chatEmojiPanel').classList.remove('open');
+    appendChatMessage(data[0]); // แสดงข้อความของเราทันที
+  } catch (e) {
+    toast('ส่งไม่สำเร็จ: ' + (e.message || ''), 'error');
+  }
+  btn.disabled = false;
+  inp.focus();
+}
+
+// ── รูปภาพ ──
+function pickChatImage(inp) {
+  const f = inp.files && inp.files[0];
+  inp.value = '';
+  if (!f) return;
+  if (!f.type.startsWith('image/')) return toast('กรุณาเลือกไฟล์รูปภาพ', 'error');
+  if (f.size > 10 * 1024 * 1024) return toast('รูปใหญ่เกิน 10 MB', 'error');
+  chatImageFile = f;
+  document.getElementById('chatImgThumb').src = URL.createObjectURL(f);
+  document.getElementById('chatImgName').textContent = f.name;
+  document.getElementById('chatImgPreview').classList.add('show');
+}
+function clearChatImage() {
+  chatImageFile = null;
+  document.getElementById('chatImgThumb').removeAttribute('src');
+  document.getElementById('chatImgPreview').classList.remove('show');
+}
+
+// ── อิโมจิ ──
+function buildEmojiPanel() {
+  const p = document.getElementById('chatEmojiPanel');
+  if (!p || p.children.length) return;
+  p.innerHTML = CHAT_EMOJIS.map(e => `<button type="button" onclick="insertEmoji('${e}')">${e}</button>`).join('');
+}
+function toggleEmojiPanel() {
+  buildEmojiPanel();
+  document.getElementById('chatEmojiPanel').classList.toggle('open');
+}
+function insertEmoji(e) {
+  const t = document.getElementById('chatInput');
+  const s = t.selectionStart ?? t.value.length, en = t.selectionEnd ?? t.value.length;
+  t.value = t.value.slice(0, s) + e + t.value.slice(en);
+  const pos = s + e.length;
+  t.focus();
+  t.setSelectionRange(pos, pos);
+}
 // ── POPULATION (แก้ไข: ค้นหาฝั่งเซิร์ฟเวอร์ + ตรวจสอบการบันทึก) ──
 let popTotal = 0;
 let popSearchTimer = null;
