@@ -537,22 +537,36 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
     </table></div></div>
   </div>
 
-  <!-- ── Dashboard ── -->
+   <!-- ── Dashboard ── -->
   <div id="page-dashboard" class="page">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-      <div><h2 class="section-title">📊 Dashboard</h2><p class="section-sub">สรุปข้อมูลภาพรวม รพสต.แวนโค้ง</p></div>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <select id="dashYear" onchange="loadDashboard()" style="padding:7px 12px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px"></select>
-        <button class="btn-outline" onclick="exportHealthExcel()">📥 Export Excel</button>
+      <div><h2 class="section-title">📊 Dashboard</h2><p class="section-sub">สรุปข้อมูลและส่งออกรายงาน รพสต.แวนโค้ง</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-outline" onclick="exportDashExcel()">📗 Excel</button>
+        <button class="btn-outline" onclick="exportDashWord()">📘 Word</button>
+        <button class="btn-outline" onclick="exportDashPdf()">📕 PDF</button>
       </div>
     </div>
-    <div class="summary-grid" id="dashStats"></div>
-    <div class="dashboard-charts">
-      <div class="chart-card"><h3>กลุ่มดัชนีมวลกาย (BMI)</h3><canvas id="chartBmi"></canvas></div>
-      <div class="chart-card"><h3>กลุ่มความดันโลหิต</h3><canvas id="chartBp"></canvas></div>
-      <div class="chart-card"><h3>กลุ่มระดับน้ำตาล</h3><canvas id="chartSugar"></canvas></div>
-      <div class="chart-card"><h3>บุหรี่และแอลกอฮอล์</h3><canvas id="chartSmoke"></canvas></div>
+    <div class="tab-bar">
+      <button class="tab-btn dash-tab active" data-type="overview" onclick="setDashType('overview')">📊 ภาพรวม</button>
+      <button class="tab-btn dash-tab" data-type="health" onclick="setDashType('health')">🩺 คัดกรองสุขภาพประจำปี</button>
+      <button class="tab-btn dash-tab" data-type="child" onclick="setDashType('child')">👶 โภชนาการเด็ก 0-5 ปี</button>
+      <button class="tab-btn dash-tab" data-type="cervical" onclick="setDashType('cervical')">🔬 มะเร็งปากมดลูก</button>
+      <button class="tab-btn dash-tab" data-type="population" onclick="setDashType('population')">👥 จำนวนประชากร</button>
     </div>
+    <div class="filter-bar">
+      <span id="dashYearMonthBox" style="display:flex;gap:10px;flex-wrap:wrap">
+        <select id="dashYear" onchange="loadDashboard()"></select>
+        <select id="dashMonth" onchange="loadDashboard()"><option value="0">ทุกเดือน</option></select>
+      </span>
+      <select id="dashVillage" onchange="loadDashboard()">
+        <option value="">ทุกหมู่</option>
+        <option value="8">หมู่ 8</option><option value="9">หมู่ 9</option>
+        <option value="11">หมู่ 11</option><option value="13">หมู่ 13</option>
+        <option value="14">หมู่ 14</option><option value="16">หมู่ 16</option>
+      </select>
+    </div>
+    <div id="dashBody"></div>
   </div>
 
   <!-- ── แชท ── -->
@@ -2398,36 +2412,357 @@ async function deleteCervical(id) {
   toast('ลบเรียบร้อย'); loadCervical();
 }
 
-// ── DASHBOARD ──
-async function loadDashboard(){
-  initHealthFilters();
-  const y=document.getElementById('dashYear').value||new Date().getFullYear()+543;
-  const [mem,act,fin,scr]=await Promise.all([sb.from('members').select('id,type'),sb.from('activities').select('id'),sb.from('finance').select('type,amount'),sb.from('health_screening').select('bmi_category,bp_group,sugar_group,smoke,alcohol').eq('year',y)]);
-  const md=mem.data||[],fd=fin.data||[],sd=scr.data||[];
-  const inc=fd.filter(f=>f.type==='income').reduce((s,f)=>s+f.amount,0),exp=fd.filter(f=>f.type==='expense').reduce((s,f)=>s+f.amount,0);
-  document.getElementById('dashStats').innerHTML=`<div class="sum-card"><h3>สมาชิก อสม.</h3><div class="sum-num">${md.filter(m=>m.type==='asom').length}</div><div class="sum-unit">คน</div></div><div class="sum-card" style="border-top-color:#1565c0"><h3>บุคลากร/พนักงาน</h3><div class="sum-num" style="color:#1565c0">${md.filter(m=>m.type==='medical').length}</div><div class="sum-unit">คน</div></div><div class="sum-card" style="border-top-color:var(--gold)"><h3>กิจกรรมทั้งหมด</h3><div class="sum-num" style="color:var(--gold)">${act.data?.length||0}</div><div class="sum-unit">กิจกรรม</div></div><div class="sum-card" style="border-top-color:#7b1fa2"><h3>คัดกรองสุขภาพ ปี ${y}</h3><div class="sum-num" style="color:#7b1fa2">${sd.length}</div><div class="sum-unit">ราย</div></div><div class="sum-card" style="border-top-color:#2e7d32"><h3>รายรับรวม</h3><div class="sum-num" style="color:#2e7d32;font-size:20px">฿${inc.toLocaleString('th-TH')}</div></div><div class="sum-card" style="border-top-color:#c62828"><h3>รายจ่ายรวม</h3><div class="sum-num" style="color:#c62828;font-size:20px">฿${exp.toLocaleString('th-TH')}</div></div>`;
-  if(sd.length===0)return;
-  const bmiMap={},bpMap={},sgMap={};let smoke=0,noSmoke=0,drink=0,noDrink=0;
-  sd.forEach(r=>{bmiMap[r.bmi_category||'ไม่ระบุ']=(bmiMap[r.bmi_category||'ไม่ระบุ']||0)+1;bpMap[r.bp_group||'ไม่ระบุ']=(bpMap[r.bp_group||'ไม่ระบุ']||0)+1;sgMap[r.sugar_group||'ไม่ระบุ']=(sgMap[r.sugar_group||'ไม่ระบุ']||0)+1;if(r.smoke==='ไม่สูบ')noSmoke++;else smoke++;if(r.alcohol==='ไม่ดื่ม')noDrink++;else drink++;});
-  const GP=['#1a5c38','#2d8a55','#4caf7d','#a5d6a7','#c8e6c9'];
-  const BPC={'ปกติ':'#2e7d32','สูงเล็กน้อย':'#f9a825','สูงระยะ 1':'#fb8c00','สูงระยะ 2':'#e53935','วิกฤต':'#880e4f','ไม่ระบุ':'#9e9e9e'};
-  const SGC={'ปกติ':'#2e7d32','เสี่ยง':'#f57f17','เบาหวาน':'#c62828','ไม่ระบุ':'#9e9e9e'};
-  function mkChart(id,type,labels,data,colors){if(chartInstances[id])chartInstances[id].destroy();const ctx=document.getElementById(id).getContext('2d');chartInstances[id]=new Chart(ctx,{type,data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:type==='bar'?6:0,borderWidth:type==='bar'?0:2}]},options:{responsive:true,plugins:{legend:{display:type!=='bar',position:'bottom'}},...(type==='bar'?{scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}:{})}}); }
-  mkChart('chartBmi','bar',Object.keys(bmiMap),Object.values(bmiMap),GP);
-  mkChart('chartBp','doughnut',Object.keys(bpMap),Object.values(bpMap),Object.keys(bpMap).map(k=>BPC[k]||'#9e9e9e'));
-  mkChart('chartSugar','pie',Object.keys(sgMap),Object.values(sgMap),Object.keys(sgMap).map(k=>SGC[k]||'#9e9e9e'));
-  mkChart('chartSmoke','bar',['สูบบุหรี่','ไม่สูบบุหรี่','ดื่มแอลกอฮอล์','ไม่ดื่ม'],[smoke,noSmoke,drink,noDrink],['#e53935','#2e7d32','#fb8c00','#1565c0']);
+// ── DASHBOARD (เลือกหมวด + ส่งออก Excel / Word / PDF) ──
+let dashType = 'overview';
+let dashReport = null;
+const VILLAGES = [8, 9, 11, 13, 14, 16];
+const DASH_PALETTE = ['#1a5c38','#2d8a55','#4caf7d','#d4a017','#fb8c00','#e53935','#1565c0','#7b1fa2','#00838f','#8d6e63','#9e9e9e'];
+const BP_COLORS = {'เหมาะสม':'#2e7d32','ความดันปกติ':'#66bb6a','สูงกว่าปกติ':'#f9a825','ระยะแรก':'#fb8c00','ระยะปานกลาง':'#e53935','ระยะรุนแรง':'#880e4f','ไม่ระบุ':'#9e9e9e'};
+const SUGAR_COLORS = {'ปกติ':'#2e7d32','เสี่ยง':'#f57f17','เบาหวาน':'#c62828','ไม่ระบุ':'#9e9e9e'};
+const BMI_COLORS = {'น้ำหนักน้อย':'#1565c0','ปกติ':'#2e7d32','น้ำหนักเกิน':'#fb8c00','อ้วน':'#c62828','ไม่ระบุ':'#9e9e9e'};
+
+function dashEsc(v) { return String(v === null || v === undefined ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function dashPct(n, total) { return total ? ((n / total) * 100).toFixed(1) + '%' : '-'; }
+function dashCount(list, fn) { const m = {}; list.forEach(r => { const k = fn(r) || 'ไม่ระบุ'; m[k] = (m[k] || 0) + 1; }); return m; }
+function dashByVillage(list, getV) {
+  const m = {}; VILLAGES.forEach(v => m['หมู่ ' + v] = 0);
+  list.forEach(r => { const v = getV(r); const k = v ? 'หมู่ ' + v : 'ไม่ระบุ'; m[k] = (m[k] || 0) + 1; });
+  return m;
+}
+function dashChart(title, type, map, colorMap) {
+  const labels = Object.keys(map);
+  return { title, type, labels, data: labels.map(k => map[k]),
+    colors: labels.map((k, i) => (typeof colorMap === 'function' ? colorMap(k) : (colorMap && colorMap[k])) || DASH_PALETTE[i % DASH_PALETTE.length]) };
+}
+function dashStatusColor(l) {
+  if (l === 'ปกติ') return '#2e7d32';
+  if (l === 'ไม่ระบุ') return '#9e9e9e';
+  if (/มีความเสี่ยง/.test(l)) return '#e65100';
+  if (/น้อยมาก|เตี้ยมาก|ผอมมาก/.test(l)) return '#283593';
+  if (/น้อย|เตี้ย|ผอม|ต่ำ/.test(l)) return '#1565c0';
+  if (/มากเกิน|อ้วนมาก/.test(l)) return '#c62828';
+  if (/มาก|อ้วน|สูง/.test(l)) return '#fb8c00';
+  return null;
 }
 
-async function exportHealthExcel(){
-  const y=document.getElementById('dashYear').value||new Date().getFullYear()+543;
-  toast('กำลังโหลดข้อมูล...');
-  const {data}=await sb.from('health_screening').select('*').eq('year',y).order('screen_date',{ascending:true});
-  if(!data||data.length===0){toast('ไม่มีข้อมูลสำหรับปีที่เลือก','error');return;}
-  const ws=XLSX.utils.json_to_sheet(data);
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Health '+y);
-  XLSX.writeFile(wb,'health_screening_'+y+'.xlsx');
+// ดึงข้อมูลทั้งหมดทีละ 1000 แถว (Supabase จำกัดครั้งละ 1000)
+async function dashFetchAll(table, cols, filterFn) {
+  const PAGE = 1000; let all = [], from = 0;
+  while (true) {
+    let q = sb.from(table).select(cols).order('id', { ascending: true }).range(from, from + PAGE - 1);
+    if (filterFn) q = filterFn(q);
+    const { data, error } = await q;
+    if (error) throw error;
+    all = all.concat(data || []);
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
+function initDashFilters() {
+  const ms = document.getElementById('dashMonth');
+  if (ms.options.length === 1) MONTHS_TH.forEach((m, i) => { const o = document.createElement('option'); o.value = i + 1; o.textContent = m; ms.appendChild(o); });
+}
+function dashFilters() {
+  return {
+    year: parseInt(document.getElementById('dashYear').value) || (new Date().getFullYear() + 543),
+    month: parseInt(document.getElementById('dashMonth').value) || 0,
+    village: parseInt(document.getElementById('dashVillage').value) || 0
+  };
+}
+function dashApplyFilter(q, f) {
+  q = q.eq('year', f.year);
+  if (f.month > 0) q = q.eq('month', f.month);
+  if (f.village) q = q.eq('village', f.village);
+  return q;
+}
+function dashFilterText(f, usePeriod = true) {
+  const p = [];
+  if (usePeriod) { p.push('ปี พ.ศ. ' + f.year); p.push(f.month > 0 ? 'เดือน' + MONTHS_TH[f.month - 1] : 'ทุกเดือน'); }
+  p.push(f.village ? 'หมู่ ' + f.village : 'ทุกหมู่');
+  return p.join(' | ');
+}
+
+function setDashType(t) { dashType = t; loadDashboard(); }
+
+async function loadDashboard() {
+  initHealthFilters(); initDashFilters();
+  document.querySelectorAll('.dash-tab').forEach(b => b.classList.toggle('active', b.dataset.type === dashType));
+  document.getElementById('dashYearMonthBox').style.display = dashType === 'population' ? 'none' : 'flex';
+  const box = document.getElementById('dashBody');
+  box.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
+  const builders = { overview: buildDashOverview, health: buildDashHealth, child: buildDashChild, cervical: buildDashCervical, population: buildDashPopulation };
+  try {
+    dashReport = await builders[dashType](dashFilters());
+    renderDashReport();
+  } catch (e) {
+    dashReport = null;
+    box.innerHTML = '<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:10px;padding:16px;color:#c62828;font-size:13px">❌ โหลดข้อมูลไม่สำเร็จ: ' + dashEsc(e.message || e) + '</div>';
+  }
+}
+
+// ── ภาพรวม ──
+async function buildDashOverview(f) {
+  const cnt = async (t, fn) => { let q = sb.from(t).select('id', { count: 'exact', head: true }); if (fn) q = fn(q); const { count, error } = await q; return error ? null : (count || 0); };
+  const [mem, act, fin, hs, cn, cv, pop] = await Promise.all([
+    sb.from('members').select('id,type'),
+    cnt('activities'),
+    dashFetchAll('finance', 'id,type,amount'),
+    cnt('health_screening', q => dashApplyFilter(q, f)),
+    cnt('child_nutrition', q => dashApplyFilter(q, f)),
+    cnt('cervical_screening', q => dashApplyFilter(q, f)),
+    cnt('population', q => f.village ? q.eq('village', f.village) : q)
+  ]);
+  const md = mem.data || [];
+  const inc = fin.filter(x => x.type === 'income').reduce((s, x) => s + (x.amount || 0), 0);
+  const exp = fin.filter(x => x.type === 'expense').reduce((s, x) => s + (x.amount || 0), 0);
+  const v = n => n === null ? '-' : n;
+  const asom = md.filter(m => m.type === 'asom').length, med = md.filter(m => m.type === 'medical').length;
+  const cards = [
+    { label: 'จำนวนประชากร', value: v(pop), unit: 'คน', color: '#1a5c38' },
+    { label: 'สมาชิก อสม.', value: asom, unit: 'คน' },
+    { label: 'บุคลากร/พนักงาน', value: med, unit: 'คน', color: '#1565c0' },
+    { label: 'กิจกรรมทั้งหมด', value: v(act), unit: 'กิจกรรม', color: '#d4a017' },
+    { label: 'คัดกรองสุขภาพ', value: v(hs), unit: 'ราย', color: '#7b1fa2' },
+    { label: 'โภชนาการเด็ก 0-5 ปี', value: v(cn), unit: 'ราย', color: '#00838f' },
+    { label: 'มะเร็งปากมดลูก', value: v(cv), unit: 'ราย', color: '#e53935' },
+    { label: 'รายรับรวม', value: '฿' + inc.toLocaleString('th-TH'), unit: '', color: '#2e7d32' },
+    { label: 'รายจ่ายรวม', value: '฿' + exp.toLocaleString('th-TH'), unit: '', color: '#c62828' }
+  ];
+  return {
+    title: 'ภาพรวม รพสต.แวนโค้ง',
+    filterText: dashFilterText(f) + ' (ใช้กับรายการคัดกรอง / ประชากรกรองเฉพาะหมู่)',
+    cards,
+    charts: [
+      dashChart('จำนวนผู้เข้ารับการคัดกรอง', 'bar', { 'คัดกรองสุขภาพ': hs || 0, 'โภชนาการเด็ก': cn || 0, 'มะเร็งปากมดลูก': cv || 0 }),
+      dashChart('รายรับ-รายจ่าย (บาท)', 'bar', { 'รายรับ': inc, 'รายจ่าย': exp }, { 'รายรับ': '#2e7d32', 'รายจ่าย': '#c62828' })
+    ],
+    detailTitle: 'ตารางสรุป',
+    columns: ['รายการ', 'จำนวน', 'หน่วย'],
+    rows: cards.map(c => [c.label, c.value, c.unit])
+  };
+}
+
+// ── คัดกรองสุขภาพประจำปี ──
+async function buildDashHealth(f) {
+  const list = (await dashFetchAll('health_screening', '*', q => dashApplyFilter(q, f)))
+    .sort((a, b) => String(b.screen_date || '').localeCompare(String(a.screen_date || '')));
+  const total = list.length;
+  const NORMAL_BP = ['เหมาะสม', 'ความดันปกติ', 'ปกติ'];
+  const bpKey = r => (r.bp_group && r.bp_group !== '-') ? r.bp_group : 'ไม่ระบุ';
+  const sgKey = r => (r.sugar_group && r.sugar_group !== '-') ? r.sugar_group : 'ไม่ระบุ';
+  const bpHigh = list.filter(r => bpKey(r) !== 'ไม่ระบุ' && !NORMAL_BP.includes(r.bp_group)).length;
+  const sgRisk = list.filter(r => ['เสี่ยง', 'เบาหวาน'].includes(r.sugar_group)).length;
+  const bmiHigh = list.filter(r => ['น้ำหนักเกิน', 'อ้วน'].includes(r.bmi_category)).length;
+  return {
+    title: 'รายงานคัดกรองสุขภาพประจำปี',
+    filterText: dashFilterText(f),
+    cards: [
+      { label: 'คัดกรองทั้งหมด', value: total, unit: 'ราย' },
+      { label: 'ความดันสูงกว่าปกติ', value: bpHigh, unit: 'ราย', color: '#c62828' },
+      { label: 'น้ำตาลเสี่ยง/เบาหวาน', value: sgRisk, unit: 'ราย', color: '#f57f17' },
+      { label: 'BMI เกิน/อ้วน', value: bmiHigh, unit: 'ราย', color: '#fb8c00' },
+      { label: 'สูบบุหรี่', value: list.filter(r => r.smoke === 'สูบ').length, unit: 'ราย', color: '#8d6e63' },
+      { label: 'ดื่มแอลกอฮอล์', value: list.filter(r => r.alcohol === 'ดื่ม').length, unit: 'ราย', color: '#7b1fa2' }
+    ],
+    charts: [
+      dashChart('กลุ่มดัชนีมวลกาย (BMI)', 'bar', dashCount(list, r => r.bmi_category), BMI_COLORS),
+      dashChart('กลุ่มความดันโลหิต', 'doughnut', dashCount(list, bpKey), BP_COLORS),
+      dashChart('กลุ่มระดับน้ำตาล', 'pie', dashCount(list, sgKey), SUGAR_COLORS),
+      dashChart('การสูบบุหรี่', 'doughnut', dashCount(list, r => r.smoke)),
+      dashChart('การดื่มแอลกอฮอล์', 'doughnut', dashCount(list, r => r.alcohol)),
+      dashChart('จำนวนผู้คัดกรองรายหมู่', 'bar', dashByVillage(list, r => r.village))
+    ],
+    detailTitle: 'รายละเอียดผู้รับการคัดกรอง (ไม่รวมเลขบัตรประชาชน)',
+    columns: ['ปี','เดือน','วันที่คัดกรอง','อสม.ผู้คัดกรอง','หมู่','ชื่อ-สกุล','เพศ','อายุ (ปี)','น้ำหนัก (กก.)','ส่วนสูง (ซม.)','BMI','กลุ่ม BMI','รอบเอว (ซม.)','ความดันเฉลี่ย','กลุ่มความดัน','น้ำตาล (mg/dL)','กลุ่มน้ำตาล','สูบบุหรี่','แอลกอฮอล์','ภาวะซึมเศร้า'],
+    rows: list.map(r => [r.year, MONTHS_TH[(r.month || 1) - 1], r.screen_date || '', r.screener_name || '', r.village || '', r.full_name || '', r.gender || '', r.age_years ?? '', r.weight || '', r.height || '', r.bmi || '', r.bmi_category || '', r.waist || '', (r.bp_avg_sys && r.bp_avg_dia) ? r.bp_avg_sys + '/' + r.bp_avg_dia : '', bpKey(r) === 'ไม่ระบุ' ? '' : r.bp_group, r.blood_sugar || '', sgKey(r) === 'ไม่ระบุ' ? '' : r.sugar_group, r.smoke || '', r.alcohol || '', r.depression1 || ''])
+  };
+}
+
+// ── โภชนาการเด็ก 0-5 ปี ──
+async function buildDashChild(f) {
+  const list = (await dashFetchAll('child_nutrition', '*', q => dashApplyFilter(q, f)))
+    .sort((a, b) => String(b.screen_date || '').localeCompare(String(a.screen_date || '')));
+  const total = list.length;
+  const risk = list.filter(r => r.overall_assessment && r.overall_assessment !== 'ปกติ').length;
+  const st = fn => dashCount(list, r => { const x = fn(r); return (x && x !== '-') ? x : null; });
+  return {
+    title: 'รายงานคัดกรองโภชนาการเด็ก 0-5 ปี',
+    filterText: dashFilterText(f),
+    cards: [
+      { label: 'คัดกรองทั้งหมด', value: total, unit: 'ราย' },
+      { label: 'ภาวะโภชนาการปกติ', value: total - risk, unit: 'ราย', color: '#2e7d32' },
+      { label: 'มีความเสี่ยง', value: risk, unit: 'ราย', color: '#e65100' },
+      { label: 'ร้อยละที่มีความเสี่ยง', value: dashPct(risk, total), unit: '', color: '#c62828' }
+    ],
+    charts: [
+      dashChart('ผลประเมินรวม', 'doughnut', dashCount(list, r => r.overall_assessment), dashStatusColor),
+      dashChart('น้ำหนักตามเกณฑ์อายุ', 'bar', st(r => r.weight_status), dashStatusColor),
+      dashChart('ส่วนสูงตามเกณฑ์อายุ', 'bar', st(r => r.height_status), dashStatusColor),
+      dashChart('น้ำหนักตามส่วนสูง', 'bar', st(r => r.weight_height_status), dashStatusColor),
+      dashChart('รอบศีรษะ', 'bar', st(r => r.head_circ_status), dashStatusColor),
+      dashChart('จำนวนเด็กรายหมู่', 'bar', dashByVillage(list, r => r.village))
+    ],
+    detailTitle: 'รายละเอียดเด็กที่ได้รับการคัดกรอง',
+    columns: ['ปี','เดือน','วันที่คัดกรอง','หมู่','บ้านเลขที่','ชื่อ-สกุล','เพศ','อายุ (เดือน)','น้ำหนัก (กก.)','ส่วนสูง (ซม.)','รอบศีรษะ (ซม.)','น้ำหนักตามเกณฑ์อายุ','ส่วนสูงตามเกณฑ์อายุ','น้ำหนักตามส่วนสูง','รอบศีรษะ','ผลประเมินรวม'],
+    rows: list.map(r => [r.year, MONTHS_TH[(r.month || 1) - 1], r.screen_date || '', r.village || '', r.house_number || '', r.full_name || '', r.gender || '', r.age_months ?? '', r.weight || '', r.height || '', r.head_circumference || '', r.weight_status || '', r.height_status || '', r.weight_height_status || '', r.head_circ_status || '', r.overall_assessment || ''])
+  };
+}
+
+// ── มะเร็งปากมดลูก ──
+async function buildDashCervical(f) {
+  const list = (await dashFetchAll('cervical_screening', '*', q => dashApplyFilter(q, f)))
+    .sort((a, b) => String(b.screen_date || '').localeCompare(String(a.screen_date || '')));
+  const total = list.length;
+  const yes = list.filter(r => r.intention === 'ประสงค์ตรวจ').length;
+  const no = list.filter(r => r.intention === 'ไม่ประสงค์ตรวจ').length;
+  const ageGroup = r => { const a = r.age_years || 0; if (a >= 30 && a <= 39) return '30-39 ปี'; if (a >= 40 && a <= 49) return '40-49 ปี'; if (a >= 50 && a <= 60) return '50-60 ปี'; return 'นอกช่วงอายุ'; };
+  const scr = dashCount(list, r => r.screener_name);
+  const top = {}; Object.entries(scr).sort((a, b) => b[1] - a[1]).slice(0, 10).forEach(([k, n]) => top[k] = n);
+  return {
+    title: 'รายงานคัดกรองมะเร็งปากมดลูก อายุ 30-60 ปี',
+    filterText: dashFilterText(f),
+    cards: [
+      { label: 'คัดกรองทั้งหมด', value: total, unit: 'ราย' },
+      { label: 'ประสงค์ตรวจ', value: yes, unit: 'ราย', color: '#2e7d32' },
+      { label: 'ไม่ประสงค์ตรวจ', value: no, unit: 'ราย', color: '#c62828' },
+      { label: 'ร้อยละประสงค์ตรวจ', value: dashPct(yes, total), unit: '', color: '#1565c0' }
+    ],
+    charts: [
+      dashChart('ความประสงค์ในการตรวจ', 'pie', dashCount(list, r => r.intention), { 'ประสงค์ตรวจ': '#2e7d32', 'ไม่ประสงค์ตรวจ': '#c62828', 'ไม่ระบุ': '#9e9e9e' }),
+      dashChart('จำนวนรายหมู่', 'bar', dashByVillage(list, r => r.village)),
+      dashChart('กลุ่มอายุ', 'bar', dashCount(list, ageGroup)),
+      dashChart('อสม.ผู้คัดกรองสูงสุด 10 อันดับ', 'bar', top)
+    ],
+    detailTitle: 'รายละเอียดผู้รับการคัดกรอง',
+    columns: ['ปี','เดือน','วันที่คัดกรอง','อสม.ผู้คัดกรอง','เบอร์ อสม.','หมู่','บ้านเลขที่','ชื่อ-สกุล','วันเกิด','อายุ (ปี)','เบอร์โทร','ความประสงค์','หมายเหตุ'],
+    rows: list.map(r => [r.year, MONTHS_TH[(r.month || 1) - 1], r.screen_date || '', r.screener_name || '', r.screener_phone || '', r.village || '', r.house_number || '', r.full_name || '', r.birthdate || '', r.age_years ?? '', r.phone || '', r.intention || '', r.note || ''])
+  };
+}
+
+// ── จำนวนประชากร ──
+async function buildDashPopulation(f) {
+  const list = await dashFetchAll('population', 'id,village,gender,birthdate', q => f.village ? q.eq('village', f.village) : q);
+  const ageGrp = r => { if (!r.birthdate) return 'ไม่ระบุวันเกิด'; const y = calcAge(r.birthdate).y; if (y <= 5) return '0-5 ปี'; if (y <= 14) return '6-14 ปี'; if (y <= 59) return '15-59 ปี'; return '60 ปีขึ้นไป'; };
+  const G = ['0-5 ปี', '6-14 ปี', '15-59 ปี', '60 ปีขึ้นไป', 'ไม่ระบุวันเกิด'];
+  const total = list.length;
+  const male = list.filter(r => r.gender === 'ชาย').length;
+  const female = list.filter(r => r.gender === 'หญิง').length;
+  const child = list.filter(r => ageGrp(r) === '0-5 ปี').length;
+  const elder = list.filter(r => ageGrp(r) === '60 ปีขึ้นไป').length;
+  const women3060 = list.filter(r => r.gender === 'หญิง' && r.birthdate && (y => y >= 30 && y <= 60)(calcAge(r.birthdate).y)).length;
+  const vList = f.village ? [f.village] : VILLAGES;
+  const rows = vList.map(v => {
+    const L = list.filter(r => parseInt(r.village) === v);
+    const g = dashCount(L, ageGrp);
+    return ['หมู่ ' + v, L.length, L.filter(r => r.gender === 'ชาย').length, L.filter(r => r.gender === 'หญิง').length, ...G.map(k => g[k] || 0)];
+  });
+  const other = list.filter(r => !vList.includes(parseInt(r.village)));
+  if (other.length) { const g = dashCount(other, ageGrp); rows.push(['ไม่ระบุหมู่', other.length, other.filter(r => r.gender === 'ชาย').length, other.filter(r => r.gender === 'หญิง').length, ...G.map(k => g[k] || 0)]); }
+  const sum = i => rows.reduce((s, r) => s + r[i], 0);
+  rows.push(['รวม', ...Array.from({ length: 8 }, (_, i) => sum(i + 1))]);
+  const gm = dashCount(list, ageGrp); const ageMap = {}; G.forEach(k => { if (gm[k]) ageMap[k] = gm[k]; });
+  return {
+    title: 'รายงานจำนวนประชากร',
+    filterText: dashFilterText(f, false),
+    cards: [
+      { label: 'ประชากรทั้งหมด', value: total, unit: 'คน' },
+      { label: 'ชาย', value: male, unit: 'คน', color: '#1565c0' },
+      { label: 'หญิง', value: female, unit: 'คน', color: '#e91e63' },
+      { label: 'เด็ก 0-5 ปี', value: child, unit: 'คน', color: '#00838f' },
+      { label: 'ผู้สูงอายุ 60 ปีขึ้นไป', value: elder, unit: 'คน', color: '#8d6e63' },
+      { label: 'หญิง 30-60 ปี (กลุ่มเป้าหมายมะเร็งปากมดลูก)', value: women3060, unit: 'คน', color: '#e53935' }
+    ],
+    charts: [
+      dashChart('ประชากรรายหมู่', 'bar', dashByVillage(list, r => r.village)),
+      dashChart('เพศ', 'pie', dashCount(list, r => r.gender), { 'ชาย': '#1565c0', 'หญิง': '#e91e63', 'ไม่ระบุ': '#9e9e9e' }),
+      dashChart('กลุ่มอายุ', 'bar', ageMap)
+    ],
+    detailTitle: 'จำนวนประชากรแยกรายหมู่',
+    columns: ['หมู่', 'รวม', 'ชาย', 'หญิง', ...G],
+    rows
+  };
+}
+
+// ── แสดงผลบนหน้าเว็บ ──
+function renderDashReport() {
+  const r = dashReport, box = document.getElementById('dashBody');
+  Object.values(chartInstances).forEach(c => c && c.destroy());
+  chartInstances = {};
+  const cards = r.cards.map(c => `<div class="sum-card" style="border-top-color:${c.color || 'var(--green-mid)'}"><h3>${dashEsc(c.label)}</h3><div class="sum-num" style="color:${c.color || 'var(--green-dark)'};${String(c.value).length > 7 ? 'font-size:20px' : ''}">${dashEsc(c.value)}</div><div class="sum-unit">${dashEsc(c.unit || '')}</div></div>`).join('');
+  const charts = r.charts.map((c, i) => `<div class="chart-card"><h3>${dashEsc(c.title)}</h3>${c.data.some(v => v > 0) ? `<canvas id="dashChart${i}"></canvas>` : '<p style="color:var(--gray-mid);font-size:13px;padding:20px 0;text-align:center">ไม่มีข้อมูล</p>'}</div>`).join('');
+  const LIMIT = 200, shown = r.rows.slice(0, LIMIT);
+  const table = `<div class="section-box-title" style="margin-top:24px">${dashEsc(r.detailTitle)} <span style="font-size:12px;color:var(--gray-mid);font-weight:400">(${r.rows.length.toLocaleString()} รายการ${r.rows.length > LIMIT ? ' — แสดง ' + LIMIT + ' รายการแรก ส่งออกไฟล์จะได้ครบทั้งหมด' : ''})</span></div>
+    <div class="table-wrap"><div class="table-scroll"><table><thead><tr>${r.columns.map(h => `<th>${dashEsc(h)}</th>`).join('')}</tr></thead><tbody>${shown.length ? shown.map(x => `<tr>${x.map(c => `<td>${dashEsc(c)}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${r.columns.length}" style="text-align:center;padding:30px;color:var(--gray-mid)">ไม่มีข้อมูล</td></tr>`}</tbody></table></div></div>`;
+  box.innerHTML = `<p class="section-sub" style="margin-bottom:12px"><strong>${dashEsc(r.title)}</strong> — ${dashEsc(r.filterText)}</p><div class="summary-grid">${cards}</div><div class="dashboard-charts">${charts}</div>${table}`;
+  r.charts.forEach((c, i) => {
+    const cv = document.getElementById('dashChart' + i); if (!cv) return;
+    chartInstances['dashChart' + i] = new Chart(cv.getContext('2d'), {
+      type: c.type,
+      data: { labels: c.labels, datasets: [{ data: c.data, backgroundColor: c.colors, borderRadius: c.type === 'bar' ? 6 : 0, borderWidth: c.type === 'bar' ? 0 : 2 }] },
+      options: { responsive: true, plugins: { legend: { display: c.type !== 'bar', position: 'bottom' } }, ...(c.type === 'bar' ? { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } : {}) }
+    });
+  });
+}
+
+// ── ส่งออกรายงาน ──
+function dashFileName(ext) { return 'dashboard_' + dashType + '_' + new Date().toISOString().substring(0, 10) + '.' + ext; }
+function dashChartTables(r) {
+  return r.charts.map(c => { const t = c.data.reduce((a, b) => a + b, 0); return { title: c.title, head: ['รายการ', 'จำนวน', 'ร้อยละ'], rows: c.labels.map((l, i) => [l, c.data[i], dashPct(c.data[i], t)]) }; });
+}
+
+function exportDashExcel() {
+  if (!dashReport) return toast('ยังไม่มีข้อมูลสำหรับส่งออก', 'error');
+  const r = dashReport;
+  const s = [[r.title], [r.filterText], [], ['สรุปภาพรวม']];
+  r.cards.forEach(c => s.push([c.label, c.value, c.unit || '']));
+  dashChartTables(r).forEach(t => { s.push([]); s.push([t.title]); s.push(t.head); t.rows.forEach(x => s.push(x)); });
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.aoa_to_sheet(s); ws1['!cols'] = [{ wch: 40 }, { wch: 16 }, { wch: 12 }];
+  XLSX.utils.book_append_sheet(wb, ws1, 'สรุป');
+  const ws2 = XLSX.utils.aoa_to_sheet([r.columns, ...r.rows]); ws2['!cols'] = r.columns.map(() => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, ws2, 'รายละเอียด');
+  XLSX.writeFile(wb, dashFileName('xlsx'));
   toast('Export Excel เรียบร้อย');
+}
+
+function dashReportBody(r) {
+  const tbl = (head, rows) => `<table><thead><tr>${head.map(h => `<th>${dashEsc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(x => `<tr>${x.map(c => `<td>${dashEsc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  const today = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+  return `<h1>โรงพยาบาลส่งเสริมสุขภาพตำบล บ้านแวนโค้ง</h1>
+    <h2>${dashEsc(r.title)}</h2>
+    <p>${dashEsc(r.filterText)}<br>วันที่ออกรายงาน: ${dashEsc(today)}</p>
+    <h3>สรุปภาพรวม</h3>${tbl(['รายการ', 'จำนวน', 'หน่วย'], r.cards.map(c => [c.label, c.value, c.unit || '']))}
+    ${dashChartTables(r).map(t => `<h3>${dashEsc(t.title)}</h3>${tbl(t.head, t.rows)}`).join('')}
+    <h3>${dashEsc(r.detailTitle)} (${r.rows.length.toLocaleString()} รายการ)</h3>${tbl(r.columns, r.rows)}`;
+}
+const DASH_REPORT_CSS = `body{font-family:'Sarabun','TH SarabunPSK',Tahoma,sans-serif;font-size:12pt;color:#000}
+  h1{font-size:18pt;margin:0 0 4pt;color:#1a5c38}h2{font-size:15pt;margin:0 0 6pt}h3{font-size:13pt;margin:14pt 0 4pt;color:#1a5c38}
+  p{margin:0 0 8pt}table{border-collapse:collapse;width:100%;margin-bottom:6pt}
+  th{background:#1a5c38;color:#fff;border:1px solid #444;padding:3pt 5pt;font-size:10pt;text-align:left}
+  td{border:1px solid #666;padding:3pt 5pt;font-size:10pt}tr{page-break-inside:avoid}`;
+
+function exportDashWord() {
+  if (!dashReport) return toast('ยังไม่มีข้อมูลสำหรับส่งออก', 'error');
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${dashEsc(dashReport.title)}</title><style>@page Section1{size:841.9pt 595.3pt;mso-page-orientation:landscape;margin:36pt}div.Section1{page:Section1}${DASH_REPORT_CSS}</style></head><body><div class="Section1">${dashReportBody(dashReport)}</div></body></html>`;
+  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = dashFileName('doc');
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast('Export Word เรียบร้อย');
+}
+
+// PDF: เปิดหน้ารายงานแล้วสั่งพิมพ์ → เลือก "บันทึกเป็น PDF" (รองรับฟอนต์ไทยครบ)
+function exportDashPdf() {
+  if (!dashReport) return toast('ยังไม่มีข้อมูลสำหรับส่งออก', 'error');
+  const w = window.open('', '_blank');
+  if (!w) return toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ กรุณาอนุญาต pop-up แล้วลองอีกครั้ง', 'error');
+  w.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>${dashEsc(dashReport.title)}</title><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet"><style>@page{size:A4 landscape;margin:12mm}${DASH_REPORT_CSS}th{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${dashReportBody(dashReport)}</body></html>`);
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 1200);
+  toast('เลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์');
 }
 
 // ── EXPORT FUNCTIONS ──
