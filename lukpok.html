@@ -1,1 +1,1658 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สมาชิกลูกป๊อก (Health Members Module)</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+<script>
+// ============================================================
+// ⚙️ CONFIG — เปลี่ยนเป็นค่าของโปรเจคใหม่
+// ============================================================
+const SUPABASE_URL = 'https://jwufybgxqfreonvzgzvi.supabase.co';
+const SUPABASE_KEY = 'ค่า anon key เดิมจาก index.html';
+const CLOUDINARY_CLOUD_NAME = 'djpdd4h3c';
+const CLOUDINARY_UPLOAD_PRESET = 'asom-media';
+</script>
+
+<!--
+============================================================
+🗄️ SQL สำหรับสร้างตารางใน Supabase (รันใน SQL Editor)
+============================================================
+-- รายชื่อ อสม. (ใช้เป็นรายชื่อตอนล็อกอิน)
+CREATE TABLE IF NOT EXISTS members (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name TEXT, role TEXT, phone TEXT,
+  photo_url TEXT DEFAULT '', image_url TEXT, village TEXT DEFAULT '9'
+);
+
+-- ทะเบียนประชากร (ใช้ดึงชื่ออัตโนมัติ)
+CREATE TABLE IF NOT EXISTS population (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  village INT, house_number TEXT, full_name TEXT, gender TEXT,
+  birthdate DATE, id_card TEXT, phone TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- สมาชิกที่ อสม. ดูแล
+CREATE TABLE IF NOT EXISTS health_members (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  asom_id BIGINT, caretaker TEXT,
+  first_name TEXT, last_name TEXT, address TEXT, id_card TEXT, phone TEXT,
+  gender TEXT, birthdate DATE, age INT, education TEXT,
+  disease TEXT, diseases JSONB DEFAULT '[]',
+  disability_type TEXT, disease_other TEXT, disease_note TEXT,
+  height NUMERIC, weight NUMERIC, bmi NUMERIC,
+  blood_pressure_1 TEXT, blood_pressure_2 TEXT, blood_pressure_3 TEXT, blood_pressure TEXT,
+  blood_sugar NUMERIC, head_size NUMERIC,
+  vaccine_completed BOOLEAN DEFAULT FALSE, development_normal BOOLEAN DEFAULT TRUE,
+  photo_url TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- รหัสผ่าน อสม.
+CREATE TABLE IF NOT EXISTS asom_passwords (
+  asom_id BIGINT PRIMARY KEY,
+  password TEXT NOT NULL
+);
+
+-- Session จดจำการเข้าสู่ระบบ
+CREATE TABLE IF NOT EXISTS asom_sessions (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  asom_id BIGINT, session_token TEXT UNIQUE, expires_at TIMESTAMPTZ
+);
+
+-- เปิด RLS + policy (ปรับตามความปลอดภัยที่ต้องการ)
+ALTER TABLE members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE population ENABLE ROW LEVEL SECURITY;
+ALTER TABLE health_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE asom_passwords ENABLE ROW LEVEL SECURITY;
+ALTER TABLE asom_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all" ON members FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all" ON population FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all" ON health_members FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all" ON asom_passwords FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all" ON asom_sessions FOR ALL USING (true) WITH CHECK (true);
+-->
+
+<style>
+:root {
+  --green-dark: #1a5c38;
+  --green-mid: #2d8a55;
+  --green-light: #4caf7d;
+  --green-pale: #e8f5ee;
+  --gold: #d4a017;
+  --gold-light: #f5e6b3;
+  --white: #ffffff;
+  --gray-bg: #f5f7f6;
+  --gray-mid: #8a9b8e;
+  --gray-dark: #2c3e35;
+  --text-main: #1a2e23;
+  --text-sub: #4a5e54;
+  --shadow: 0 2px 16px rgba(26,92,56,0.10);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Sarabun',sans-serif; background:var(--gray-bg); color:var(--text-main); font-size:15px; }
+main { max-width:1200px; margin:0 auto; padding:24px 16px; }
+.section-title { font-family:'Kanit',sans-serif; font-size:22px; font-weight:600; color:var(--green-dark); margin-bottom:4px; }
+.section-sub { color:var(--gray-mid); font-size:13px; margin-bottom:20px; }
+
+/* BUTTONS */
+.btn-primary { background:var(--green-mid); color:white; border:none; border-radius:var(--radius-sm); padding:9px 22px; font-family:'Sarabun',sans-serif; font-size:14px; font-weight:600; cursor:pointer; transition:.2s; }
+.btn-primary:hover { background:var(--green-dark); }
+.btn-danger { background:#e53e3e; color:white; border:none; border-radius:var(--radius-sm); padding:6px 14px; font-family:'Sarabun',sans-serif; font-size:12px; cursor:pointer; }
+.btn-edit { background:var(--gold); color:white; border:none; border-radius:var(--radius-sm); padding:6px 14px; font-family:'Sarabun',sans-serif; font-size:12px; cursor:pointer; }
+.btn-excel { background:#217346; color:white; border:none; border-radius:var(--radius-sm); padding:9px 18px; font-family:'Sarabun',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:.2s; }
+.btn-excel:hover { background:#185a34; }
+
+/* FORM */
+.form-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:12px; }
+.form-group label { font-size:12px; color:var(--text-sub); display:block; margin-bottom:4px; font-weight:500; }
+.form-group input, .form-group select, .form-group textarea { width:100%; padding:8px 10px; border:1.5px solid #dde8e1; border-radius:var(--radius-sm); font-family:'Sarabun',sans-serif; font-size:13px; color:var(--text-main); }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline:none; border-color:var(--green-mid); }
+.section-box { background:white; border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:16px; }
+.section-box-title { font-family:'Kanit',sans-serif; font-size:15px; font-weight:600; color:var(--green-dark); margin-bottom:14px; padding-bottom:8px; border-bottom:2px solid var(--green-pale); }
+.age-display { background:var(--green-pale); color:var(--green-dark); border-radius:8px; padding:6px 14px; font-size:14px; font-weight:700; display:inline-block; margin-top:4px; }
+input[type="file"] { display:none; }
+.photo-upload-label { cursor:pointer; }
+
+/* LOGIN */
+.login-box { background:white; border-radius:var(--radius); box-shadow:var(--shadow); padding:32px 28px; max-width:400px; margin:0 auto; }
+.login-box h2 { font-family:'Kanit',sans-serif; font-size:20px; color:var(--green-dark); margin-bottom:6px; }
+
+/* TABLE */
+.health-table-wrap { background:white; border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; margin-top:16px; }
+.filter-bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+.filter-bar input, .filter-bar select { padding:7px 10px; border:1.5px solid #dde8e1; border-radius:var(--radius-sm); font-family:'Sarabun',sans-serif; font-size:13px; }
+.bmi-badge { border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700; }
+.bmi-normal { background:#e8f5e9; color:#2e7d32; }
+.bmi-over { background:#fff3e0; color:#e65100; }
+.bmi-obese { background:#ffebee; color:#c62828; }
+.bmi-under { background:#e3f2fd; color:#1565c0; }
+.bp-badge { background:#fce4ec; color:#880e4f; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:700; white-space:nowrap; }
+
+/* MODAL */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1000; align-items:center; justify-content:center; padding:16px; }
+.modal-overlay.open { display:flex; }
+.modal { background:white; border-radius:var(--radius); padding:24px; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; }
+.modal h2 { font-family:'Kanit',sans-serif; font-size:18px; color:var(--green-dark); margin-bottom:16px; }
+.modal-close { float:right; background:none; border:none; font-size:22px; cursor:pointer; color:var(--gray-mid); margin-top:-4px; }
+
+/* DISEASE CHECKBOXES */
+.disease-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+@media(max-width:480px) { .disease-grid { grid-template-columns:repeat(2,1fr); } }
+.disease-check { display:flex; align-items:center; gap:6px; padding:6px 10px; border:1.5px solid #dde8e1; border-radius:8px; cursor:pointer; transition:.15s; font-size:13px; user-select:none; }
+.disease-check:hover { border-color:var(--green-light); background:var(--green-pale); }
+.disease-check input[type="checkbox"] { width:16px; height:16px; accent-color:var(--green-mid); flex-shrink:0; pointer-events:none; }
+.disease-check.checked { border-color:var(--green-mid); background:var(--green-pale); font-weight:600; color:var(--green-dark); }
+
+/* AUTOCOMPLETE */
+.autocomplete-wrap { position:relative; }
+.autocomplete-list { position:absolute; top:100%; left:0; right:0; background:white; border:1.5px solid var(--green-light); border-top:none; border-radius:0 0 var(--radius-sm) var(--radius-sm); z-index:999; max-height:200px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,.12); }
+.autocomplete-item { padding:9px 12px; cursor:pointer; font-size:13px; font-family:'Sarabun',sans-serif; border-bottom:1px solid var(--green-pale); }
+.autocomplete-item:hover, .autocomplete-item.active { background:var(--green-pale); color:var(--green-dark); font-weight:600; }
+
+/* MISC */
+.mt-4 { margin-top:16px; }
+.text-center { text-align:center; }
+.w-full { width:100%; }
+.toast { position:fixed; bottom:24px; right:24px; background:var(--green-dark); color:white; padding:12px 20px; border-radius:var(--radius-sm); font-size:14px; font-weight:600; z-index:2000; opacity:0; transition:opacity .3s; pointer-events:none; max-width:320px; }
+.toast.show { opacity:1; }
+.spinner { width:40px; height:40px; border:4px solid var(--green-pale); border-top-color:var(--green-mid); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+</style>
+</head>
+<body>
+
+<main id="mainContent">
+  <div style="text-align:center;padding:60px 0;">
+    <div class="spinner" style="margin:0 auto;"></div>
+    <p style="margin-top:12px;color:var(--gray-mid);">กำลังเชื่อมต่อฐานข้อมูล...</p>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- ============================================================ -->
+<!-- HEALTH MEMBER MODAL (ฟอร์มเพิ่ม/แก้ไขสมาชิกที่ดูแล)            -->
+<!-- ============================================================ -->
+<div class="modal-overlay" id="addHealthModal">
+  <div class="modal" style="max-width:640px;">
+    <button class="modal-close" onclick="closeModal('addHealthModal')">×</button>
+    <h2>👤 เพิ่ม/แก้ไขข้อมูลสมาชิกที่ดูแล</h2>
+    <input type="hidden" id="editHealthId">
+
+    <div class="section-box">
+      <div class="section-box-title">📋 ข้อมูลพื้นฐาน</div>
+      <div class="form-row">
+        <div class="form-group" style="max-width:110px;">
+          <label>หมู่ <span style="color:red">*</span></label>
+          <select id="hMoo" style="width:100%;padding:8px 10px;border:1.5px solid #dde8e1;border-radius:var(--radius-sm);font-family:'Sarabun',sans-serif;font-size:13px;color:var(--text-main);" onchange="loadPopulationByMoo()">
+            <option value="">-- หมู่ --</option>
+            <option value="8">หมู่ 8</option>
+            <option value="9">หมู่ 9</option>
+            <option value="11">หมู่ 11</option>
+            <option value="13">หมู่ 13</option>
+            <option value="14">หมู่ 14</option>
+            <option value="16">หมู่ 16</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>บ้านเลขที่ <span style="font-size:11px;color:var(--gray-mid);">(เลือกหรือพิมพ์)</span></label>
+          <input id="hHouseNo" placeholder="เช่น 123/4" list="hHouseNoList"
+            oninput="filterPopulationByHouse()" onchange="filterPopulationByHouse()">
+          <datalist id="hHouseNoList"></datalist>
+        </div>
+        <div class="form-group autocomplete-wrap" style="grid-column:1/-1;">
+          <label>ชื่อ-นามสกุล <span style="color:red">*</span> <span style="font-size:11px;color:var(--gray-mid);">(พิมพ์หรือเลือกจากรายชื่อ)</span></label>
+          <input id="hFullNameSearch" placeholder="พิมพ์ชื่อ หรือเลือกจาก dropdown ด้านล่าง..." autocomplete="off"
+            oninput="filterHealthNameAC(this.value)"
+            style="width:100%;padding:9px 12px;border:1.5px solid #dde8e1;border-radius:8px;font-family:'Sarabun',sans-serif;font-size:13px;">
+          <div id="healthNameACList" class="autocomplete-list" style="display:none;"></div>
+        </div>
+        <div class="form-group">
+          <label>ชื่อ (รวมคำนำหน้า) <span style="color:red">*</span></label>
+          <input id="hFirstName" placeholder="เช่น นายสมชาย / นางสาวสมหญิง">
+        </div>
+        <div class="form-group">
+          <label>นามสกุล <span style="color:red">*</span></label>
+          <input id="hLastName" placeholder="นามสกุล">
+        </div>
+      </div>
+      <div class="form-row">
+        <select id="hPrefix" style="display:none;"></select>
+        <div class="form-group"><label>เลขบัตรประชาชน <span style="font-size:11px;color:var(--gray-mid);">(13 หลัก)</span></label>
+          <input id="hIdCard" placeholder="X-XXXX-XXXXX-XX-X" maxlength="17"
+            oninput="this.value=formatIdCardInput(this.value)"
+            style="font-family:monospace;letter-spacing:1px;font-size:13px;">
+        </div>
+        <div class="form-group"><label>เบอร์โทร</label><input id="hPhone" placeholder="0XX-XXX-XXXX"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ที่อยู่ (หมู่ + บ้านเลขที่)</label>
+          <input id="hAddress" placeholder="จะกรอกอัตโนมัติ เช่น หมู่ 9 บ้านเลขที่ 123/4" readonly
+            style="background:#f5f7f6;color:var(--text-sub);">
+        </div>
+        <div class="form-group"><label>เพศ</label>
+          <select id="hGender">
+            <option value="">-- เลือก --</option>
+            <option value="ชาย">ชาย</option>
+            <option value="หญิง">หญิง</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>วันเดือนปีเกิด</label>
+        <input type="date" id="hBirthDate" onchange="calcAgeFromBirth()"
+          style="width:100%;padding:8px 10px;border:1.5px solid #dde8e1;border-radius:var(--radius-sm);font-family:'Sarabun',sans-serif;font-size:13px;box-sizing:border-box;">
+        <div id="hAgeDisplay" style="margin-top:6px;"></div>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <div class="section-box-title">💊 ข้อมูลสุขภาพ</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
+        <div class="form-group" style="margin:0;">
+          <label>ส่วนสูง (ซม.)</label>
+          <input type="number" id="hHeight" placeholder="" oninput="calcBMI()" style="width:100%;">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>น้ำหนัก (กก.)</label>
+          <input type="number" id="hWeight" placeholder="" oninput="calcBMI()" style="width:100%;">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>ค่า BMI <span style="font-size:11px;color:var(--gray-mid);">(คำนวณอัตโนมัติ)</span></label>
+          <input id="hBMI" placeholder="" readonly style="background:#f5f7f6;width:100%;">
+        </div>
+      </div>
+      <div id="childHealthFields" style="display:none;">
+        <div style="background:#e3f2fd;border-radius:8px;padding:12px 14px;margin-bottom:12px;border:1px solid #90caf9;">
+          <div style="font-size:13px;font-weight:600;color:#1565c0;margin-bottom:10px;">👶 ข้อมูลเด็ก 0-5 ปี</div>
+          <div class="form-row">
+            <div class="form-group"><label>รอบศีรษะ (ซม.)</label><input type="number" id="hHeadSize" placeholder="เช่น 44" step="0.1"></div>
+            <div class="form-group" style="display:flex;flex-direction:column;justify-content:flex-end;">
+              <label style="display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;">
+                <input type="checkbox" id="hVaccine" style="width:18px;height:18px;accent-color:var(--green-mid);">
+                <span>วัคซีนครบ</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;">
+                <input type="checkbox" id="hDevNormal" checked style="width:18px;height:18px;accent-color:var(--green-mid);">
+                <span>พัฒนาการสมวัย</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--green-pale);border-radius:8px;padding:14px 16px;margin-bottom:12px;border:1px solid var(--green-light);">
+        <div style="font-size:13px;font-weight:600;color:var(--green-dark);margin-bottom:12px;">💓 วัดความดันโลหิต</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:12px;font-weight:600;color:#c62828;">SYS (ค่าตัวบน)</label>
+            <input type="number" id="hBPSys" placeholder="" min="40" max="300" oninput="updateBPStatus()" style="text-align:center;font-size:16px;font-weight:700;border-color:#ef9a9a;">
+            <div style="font-size:10px;color:var(--gray-mid);margin-top:3px;">แรงดันขณะหัวใจบีบตัว (mmHg)</div>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:12px;font-weight:600;color:#1565c0;">DIA (ค่าตัวล่าง)</label>
+            <input type="number" id="hBPDia" placeholder="" min="20" max="200" oninput="updateBPStatus()" style="text-align:center;font-size:16px;font-weight:700;border-color:#90caf9;">
+            <div style="font-size:10px;color:var(--gray-mid);margin-top:3px;">แรงดันขณะหัวใจคลายตัว (mmHg)</div>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:12px;font-weight:600;color:#6a1b9a;">PUL (ชีพจร)</label>
+            <input type="number" id="hBPPul" placeholder="" min="20" max="250" oninput="updateBPStatus()" style="text-align:center;font-size:16px;font-weight:700;border-color:#ce93d8;">
+            <div style="font-size:10px;color:var(--gray-mid);margin-top:3px;">อัตราการเต้นหัวใจ (ครั้ง/นาที)</div>
+          </div>
+        </div>
+        <div id="bpStatusMsg" style="margin-top:10px;"></div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>น้ำตาลในเลือด (mg/dL)</label>
+        <input type="number" id="hBloodSugar" placeholder="">
+      </div>
+    </div>
+
+    <div class="section-box">
+      <div class="section-box-title">🏥 โรคประจำตัว (เลือกได้หลายรายการ)</div>
+      <div class="disease-grid" id="diseaseGrid">
+        <label class="disease-check"><input type="checkbox" value="ปกติ">ปกติ</label>
+        <label class="disease-check"><input type="checkbox" value="พิการ">พิการ</label>
+        <label class="disease-check"><input type="checkbox" value="เบาหวาน">เบาหวาน</label>
+        <label class="disease-check"><input type="checkbox" value="ความดัน">ความดัน</label>
+        <label class="disease-check"><input type="checkbox" value="โรคหัวใจ">โรคหัวใจ</label>
+        <label class="disease-check"><input type="checkbox" value="โรคไต">โรคไต</label>
+        <label class="disease-check"><input type="checkbox" value="โรคเกาต์">โรคเกาต์</label>
+        <label class="disease-check"><input type="checkbox" value="โรคตับ">โรคตับ</label>
+        <label class="disease-check"><input type="checkbox" value="โรคมะเร็ง">โรคมะเร็ง</label>
+        <label class="disease-check"><input type="checkbox" value="หอบหืด">หอบหืด</label>
+        <label class="disease-check"><input type="checkbox" value="อัมพฤกษ์">อัมพฤกษ์</label>
+        <label class="disease-check"><input type="checkbox" value="อัมพาต">อัมพาต</label>
+        <label class="disease-check"><input type="checkbox" value="ผู้ป่วยติดเตียง">ผู้ป่วยติดเตียง</label>
+        <label class="disease-check"><input type="checkbox" value="อื่นๆ">อื่นๆ</label>
+      </div>
+      <div id="diseaseOtherField" style="display:none;margin-top:10px;">
+        <input id="hDiseaseOther" placeholder="ระบุโรคอื่นๆ..." style="width:100%;padding:8px 10px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun,sans-serif;font-size:13px;">
+      </div>
+      <div style="margin-top:12px;">
+        <label style="font-size:12px;font-weight:600;color:var(--text-sub);display:block;margin-bottom:4px;">📝 หมายเหตุ / บันทึกเพิ่มเติม</label>
+        <textarea id="hDiseaseNote" rows="2" placeholder="บันทึกข้อมูลเพิ่มเติม เช่น ประวัติการรักษา ยาที่ใช้ หรือข้อสังเกตอื่นๆ..." style="width:100%;padding:8px 10px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun,sans-serif;font-size:13px;resize:vertical;"></textarea>
+      </div>
+      <div id="disabilityFields" style="display:none;margin-top:12px;background:#fff3e0;border-radius:8px;padding:12px 14px;border:1px solid #ffcc02;">
+        <div style="font-size:13px;font-weight:600;color:#e65100;margin-bottom:8px;">♿ ประเภทความพิการ</div>
+        <select id="hDisabilityType" style="width:100%;padding:8px 10px;border:1.5px solid #ffcc02;border-radius:8px;font-family:Sarabun,sans-serif;font-size:13px;">
+          <option value="">-- เลือกประเภทความพิการ --</option>
+          <option>พิการทางการเคลื่อนไหว</option>
+          <option>พิการทางสายตา</option>
+          <option>พิการทางการได้ยิน</option>
+          <option>พิการทางสติปัญญา</option>
+          <option>พิการซ้ำซ้อน</option>
+          <option>อื่นๆ</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <div class="section-box-title">📷 รูปภาพสมาชิก</div>
+      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+        <div id="hPhotoPreviewWrap" style="width:100px;height:100px;border-radius:12px;border:2.5px dashed var(--green-light);background:var(--green-pale);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;position:relative;">
+          <img id="hPhotoPreview" src="" style="width:100%;height:100%;object-fit:cover;display:none;border-radius:10px;">
+          <span id="hPhotoPlaceholder" style="font-size:36px;">👤</span>
+        </div>
+        <div style="flex:1;min-width:160px;">
+          <label class="btn-primary photo-upload-label" style="font-size:13px;padding:8px 18px;display:inline-flex;align-items:center;gap:6px;">
+            📷 เลือกรูปภาพ
+            <input type="file" accept="image/*" onchange="previewHealthPhoto(event)">
+          </label>
+          <div id="hPhotoInfo" style="margin-top:8px;font-size:12px;color:var(--gray-mid);line-height:1.6;"></div>
+          <div style="margin-top:6px;font-size:11px;color:var(--gray-mid);">
+            รองรับ JPG, PNG, HEIC<br>
+            ไฟล์ขนาดใหญ่จะถูกบีบอัดอัตโนมัติ
+          </div>
+          <button id="hPhotoClearBtn" onclick="clearHealthPhoto()" style="display:none;margin-top:8px;background:none;border:1.5px solid #ffcdd2;color:#c62828;border-radius:8px;padding:5px 14px;font-family:Sarabun,sans-serif;font-size:12px;cursor:pointer;">
+            🗑️ ลบรูป
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary w-full" onclick="saveHealthMember()" style="font-size:15px;padding:12px;">💾 บันทึกข้อมูลสมาชิก</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// SUPABASE CLIENT
+// ============================================================
+const { createClient } = window.supabase;
+let db;
+let dbReady = false;
+try {
+  db = createClient(SUPABASE_URL, SUPABASE_KEY);
+  dbReady = true;
+} catch(e) {
+  console.error('Supabase init failed:', e);
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let members = [];            // รายชื่อ อสม. (ใช้ตอนล็อกอิน + แสดงรูป)
+let populationData = [];     // ทะเบียนประชากร (ใช้ autocomplete ชื่อ)
+let healthMembers = [];      // สมาชิกที่ อสม. คนที่ล็อกอินดูแล
+let allHealthMembers = [];   // สมาชิกทั้งหมด (ใช้ export ได้)
+let loggedInAsom = null;
+let popFilteredByMoo = [];
+
+// ============================================================
+// UTILS
+// ============================================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function dbErr(op, err) { console.error(`DB error (${op}):`, err); showToast(`❌ ${op} ล้มเหลว: ${err?.message||err}`); }
+
+function formatThaiDateFull(dateStr) {
+  if (!dateStr) return '-';
+  const monthsFull = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return `${d.getDate()} ${monthsFull[d.getMonth()]} ${d.getFullYear()+543}`;
+}
+
+function personIconSVG(size) {
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--green-pale);border:3px solid var(--green-light);display:flex;align-items:center;justify-content:center;">
+    <svg width="${size*.55}px" height="${size*.55}px" viewBox="0 0 44 44" fill="none">
+      <circle cx="22" cy="17" r="9" fill="#4caf7d"/>
+      <ellipse cx="22" cy="38" rx="15" ry="8" fill="#4caf7d"/>
+    </svg>
+  </div>`;
+}
+
+// ---- ID Card helpers ----
+function formatIdCard(raw) {
+  if (!raw) return '-';
+  const d = String(raw).replace(/\D/g, '');
+  if (d.length !== 13) return d || '-';
+  return `${d[0]}-${d.slice(1,5)}-${d.slice(5,10)}-${d.slice(10,12)}-${d[12]}`;
+}
+function formatIdCardInput(val) {
+  const d = val.replace(/\D/g, '').slice(0, 13);
+  let out = '';
+  for (let i = 0; i < d.length; i++) {
+    if (i === 1 || i === 5 || i === 10 || i === 12) out += '-';
+    out += d[i];
+  }
+  return out;
+}
+
+// ---- Age helpers ----
+function calcFullAge(birthDate) {
+  if (!birthDate) return null;
+  const birth = new Date(birthDate);
+  const today = new Date();
+  let years  = today.getFullYear() - birth.getFullYear();
+  let months = today.getMonth()    - birth.getMonth();
+  let days   = today.getDate()     - birth.getDate();
+  if (days < 0) {
+    months--;
+    const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+  if (months < 0) { years--; months += 12; }
+  return { years: Math.max(0, years), months: Math.max(0, months), days: Math.max(0, days) };
+}
+
+function calcAgeFromDate(birthDate) {
+  if (!birthDate) return null;
+  const birth = new Date(birthDate);
+  const today = new Date();
+  let years = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) years--;
+  return Math.max(0, years);
+}
+
+function calcAgeFromBirth() {
+  const dateEl  = document.getElementById('hBirthDate');
+  const ageEl   = document.getElementById('hAgeDisplay');
+  const childFields = document.getElementById('childHealthFields');
+  if (!ageEl) return;
+
+  const val = dateEl?.value || '';
+  if (!val) { ageEl.innerHTML = ''; if(childFields) childFields.style.display='none'; return; }
+
+  const birth = new Date(val);
+  const today = new Date();
+  if (birth > today) {
+    ageEl.innerHTML = '<span style="color:#c62828;font-size:13px;">❌ วันเกิดห้ามเกินวันปัจจุบัน</span>';
+    return;
+  }
+
+  const fa = calcFullAge(val);
+  const monthsFull = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const thaiDate = `${birth.getDate()} ${monthsFull[birth.getMonth()]} ${birth.getFullYear() + 543}`;
+
+  const bgColor = fa.years < 1 ? '#e3f2fd' : fa.years >= 60 ? '#f3e5f5' : fa.years <= 5 ? '#e8f5e9' : 'var(--green-pale)';
+  const txColor = fa.years < 1 ? '#1565c0' : fa.years >= 60 ? '#6a1b9a' : fa.years <= 5 ? '#2e7d32' : 'var(--green-dark)';
+
+  ageEl.innerHTML = `
+    <div style="padding:8px 12px;background:${bgColor};border-radius:8px;margin-top:4px;">
+      <div style="font-size:13px;color:${txColor};font-weight:600;">🎂 เกิดวันที่ ${thaiDate}</div>
+      <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;">
+        <span style="font-size:13px;color:${txColor};">อายุปี <strong>${fa.years}</strong></span>
+        <span style="font-size:13px;color:${txColor};">อายุเดือน <strong>${fa.months}</strong></span>
+        <span style="font-size:13px;color:${txColor};">อายุวัน <strong>${fa.days}</strong></span>
+      </div>
+    </div>`;
+
+  if (childFields) childFields.style.display = fa.years <= 5 ? 'block' : 'none';
+}
+
+function getBirthDateISO() {
+  const val = document.getElementById('hBirthDate')?.value || '';
+  return val || null;
+}
+function setBirthDateFromISO(iso) {
+  if (!iso) return;
+  const dateEl = document.getElementById('hBirthDate');
+  if (dateEl) dateEl.value = iso.split('T')[0];
+  calcAgeFromBirth();
+}
+
+// ---- Blood pressure ----
+function updateBPStatus() {
+  const sys = parseInt(document.getElementById('hBPSys')?.value) || 0;
+  const dia = parseInt(document.getElementById('hBPDia')?.value) || 0;
+  const pul = parseInt(document.getElementById('hBPPul')?.value) || 0;
+  const msg = document.getElementById('bpStatusMsg');
+  if (!msg) return;
+  if (!sys && !dia) { msg.innerHTML = ''; return; }
+
+  let bpIcon = '', bpLabel = '', bpColor = '', bpBg = '', bpAdvice = '';
+
+  if (sys < 90 || dia < 60) {
+    bpIcon = '⬇️'; bpLabel = 'ความดันต่ำ';
+    bpColor = '#1565c0'; bpBg = '#e3f2fd';
+    bpAdvice = 'ดื่มน้ำให้เพียงพอ หลีกเลี่ยงการลุกขึ้นเร็ว ปรึกษาแพทย์หากมีอาการเวียนหัว';
+  } else if (sys < 120 && dia < 80) {
+    bpIcon = '🟢'; bpLabel = 'เหมาะสม (ปกติ)';
+    bpColor = '#1b5e20'; bpBg = '#e8f5e9';
+    bpAdvice = 'ควบคุมอาหาร ออกกำลังกาย และวัดความดันสม่ำเสมอ';
+  } else if (sys >= 120 && sys <= 129 && dia >= 80 && dia <= 84) {
+    bpIcon = '🟢'; bpLabel = 'ปกติ (120–129/80–84)';
+    bpColor = '#f9a825'; bpBg = '#fffde7';
+    bpAdvice = 'ดูแลสุขภาพต่อเนื่อง ลดเค็ม ออกกำลังกายสม่ำเสมอ';
+  } else if (sys >= 130 && sys <= 139 && dia >= 85 && dia <= 89) {
+    bpIcon = '🟠'; bpLabel = 'สูงกว่าปกติ (130–139/85–89)';
+    bpColor = '#e65100'; bpBg = '#fff3e0';
+    bpAdvice = 'ปรึกษาแพทย์ ปรับพฤติกรรมสุขภาพ ลดเค็ม ลดความเครียด';
+  } else if ((sys >= 140 && sys <= 159) || (dia >= 90 && dia <= 99)) {
+    bpIcon = '🔴'; bpLabel = 'ความดันสูง ระยะเริ่มแรก (140–159/90–99)';
+    bpColor = '#c62828'; bpBg = '#ffebee';
+    bpAdvice = 'พบแพทย์เพื่อวินิจฉัยและรับการรักษา';
+  } else if ((sys >= 160 && sys <= 179) || (dia >= 100 && dia <= 109)) {
+    bpIcon = '🔴'; bpLabel = 'ความดันสูง ระยะปานกลาง (160–179/100–109)';
+    bpColor = '#b71c1c'; bpBg = '#ffcdd2';
+    bpAdvice = 'พบแพทย์โดยเร็ว เสี่ยงหัวใจทำงานหนัก';
+  } else if (sys >= 180 || dia >= 110) {
+    bpIcon = '🚨'; bpLabel = 'ความดันสูง ระยะรุนแรง (≥180/≥110) — ควรพบแพทย์ทันที!';
+    bpColor = '#7f0000'; bpBg = '#ffebee';
+    bpAdvice = 'รีบพบแพทย์โดยด่วน อาจเกิดภาวะฉุกเฉิน';
+  } else {
+    bpIcon = '🟡'; bpLabel = 'ปกติ';
+    bpColor = '#f57f17'; bpBg = '#fffde7';
+    bpAdvice = 'ติดตามความดันสม่ำเสมอ ปรึกษาแพทย์หากค่าสูงขึ้นเรื่อยๆ';
+  }
+
+  let pulIcon = '', pulLabel = '', pulColor = '';
+  if (pul) {
+    if (pul < 60)        { pulIcon = '⬇️'; pulLabel = `ชีพจรช้า (${pul} ครั้ง/นาที)`;  pulColor = '#1565c0'; }
+    else if (pul <= 100) { pulIcon = '💚'; pulLabel = `ชีพจรปกติ (${pul} ครั้ง/นาที)`; pulColor = '#2e7d32'; }
+    else                 { pulIcon = '⚠️'; pulLabel = `ชีพจรเร็ว (${pul} ครั้ง/นาที)`;  pulColor = '#e65100'; }
+  }
+
+  msg.innerHTML = `
+    <div style="border-radius:10px;border:1.5px solid ${bpColor}40;overflow:hidden;margin-top:6px;">
+      <div style="background:${bpBg};padding:10px 14px;display:flex;align-items:flex-start;gap:10px;">
+        <span style="font-size:22px;flex-shrink:0;">${bpIcon}</span>
+        <div style="flex:1;">
+          <div style="font-weight:700;color:${bpColor};font-size:14px;line-height:1.3;">${bpLabel}</div>
+          <div style="font-size:12px;color:var(--gray-mid);margin-top:2px;">
+            ${sys && dia ? `<span style="font-weight:600;">${sys}/${dia} mmHg</span>` : ''}
+            ${pul ? `&nbsp;|&nbsp;<span style="color:${pulColor};">${pulIcon} ${pulLabel}</span>` : ''}
+          </div>
+        </div>
+      </div>
+      <div style="background:white;padding:8px 14px;border-top:1px solid ${bpColor}20;display:flex;align-items:flex-start;gap:8px;">
+        <span style="font-size:14px;flex-shrink:0;">💡</span>
+        <span style="font-size:12px;color:var(--text-sub);line-height:1.5;">${bpAdvice}</span>
+      </div>
+    </div>`;
+}
+
+function bpStatusText(sys, dia) {
+  const s = parseInt(sys) || 0;
+  const d = parseInt(dia) || 0;
+  if (!s || !d) return '';
+  if (s < 90 || d < 60)                                 return '⬇️ ความดันต่ำ';
+  if (s < 120 && d < 80)                                return '🟢 เหมาะสม';
+  if (s <= 129 && d <= 84)                              return '🟡 ปกติ';
+  if (s <= 139 && d <= 89)                              return '🟠 สูงกว่าปกติ';
+  if ((s >= 140 && s <= 159) || (d >= 90 && d <= 99))   return '🔴 สูงระยะเริ่มแรก';
+  if ((s >= 160 && s <= 179) || (d >= 100 && d <= 109)) return '🔴 สูงระยะปานกลาง';
+  return '🚨 สูงระยะรุนแรง';
+}
+
+// ---- Disease checkboxes ----
+function toggleDisease(label) {
+  if (label && label.target) label = label.target.closest('label.disease-check');
+  if (!label) return;
+  const cb = label.querySelector('input[type="checkbox"]');
+  if (!cb) return;
+  label.classList.toggle('checked', cb.checked);
+  const selected = getSelectedDiseases();
+  const disabilityFields = document.getElementById('disabilityFields');
+  if (disabilityFields) disabilityFields.style.display = selected.includes('พิการ') ? 'block' : 'none';
+  const otherField = document.getElementById('diseaseOtherField');
+  if (otherField) otherField.style.display = selected.includes('อื่นๆ') ? 'block' : 'none';
+}
+
+// (เวอร์ชันนี้ปรับให้ใช้ event 'change' อย่างเดียว ป้องกันการ toggle ซ้ำ)
+document.addEventListener('change', e => {
+  if (e.target.matches('#diseaseGrid input[type="checkbox"]')) {
+    toggleDisease(e.target.closest('label.disease-check'));
+  }
+});
+
+function getSelectedDiseases() {
+  const selected = [];
+  document.querySelectorAll('#diseaseGrid input[type="checkbox"]').forEach(cb => { if (cb.checked) selected.push(cb.value); });
+  return selected;
+}
+
+function setSelectedDiseases(diseases) {
+  document.querySelectorAll('#diseaseGrid input[type="checkbox"]').forEach(cb => {
+    const label = cb.closest('label');
+    const checked = Array.isArray(diseases) ? diseases.includes(cb.value) : (diseases || '').includes(cb.value);
+    cb.checked = checked;
+    if (label) label.classList.toggle('checked', checked);
+  });
+  const selected = getSelectedDiseases();
+  const disabilityFields = document.getElementById('disabilityFields');
+  const otherField = document.getElementById('diseaseOtherField');
+  if (disabilityFields) disabilityFields.style.display = selected.includes('พิการ') ? 'block' : 'none';
+  if (otherField) otherField.style.display = selected.includes('อื่นๆ') ? 'block' : 'none';
+}
+
+function calcBMI() {
+  const h = parseFloat(document.getElementById('hHeight').value) / 100;
+  const w = parseFloat(document.getElementById('hWeight').value);
+  if (h > 0 && w > 0) document.getElementById('hBMI').value = (w/(h*h)).toFixed(1);
+}
+
+// ============================================================
+// IMAGE COMPRESS + CLOUDINARY UPLOAD
+// ============================================================
+async function compressImageToBlob(file, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ratio = Math.min(maxWidth/img.width, maxWidth/img.height);
+        const w = img.width * (ratio<1?ratio:1);
+        const h = img.height * (ratio<1?ratio:1);
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality||0.82);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// บีบอัดรูปแบบ multi-pass จนได้ขนาดที่เหมาะสม รองรับไฟล์ใหญ่ทุกขนาด
+async function resizeImageForStorage(file, targetMaxMB) {
+  targetMaxMB = targetMaxMB || 1.5;
+  const targetBytes = targetMaxMB * 1024 * 1024;
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onerror = () => resolve(null);
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = () => resolve(null);
+      img.onload = () => {
+        const fileMB = file.size / 1024 / 1024;
+        let maxWidth = 1200;
+        if (fileMB > 10) maxWidth = 800;
+        else if (fileMB > 5) maxWidth = 1000;
+
+        const canvas = document.createElement('canvas');
+        const ratio  = Math.min(maxWidth / img.width, maxWidth / img.height, 1);
+        canvas.width  = Math.round(img.width  * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        let quality = 0.85;
+        const tryEncode = () => {
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          const bytes   = dataUrl.length * 0.75;
+          if (bytes <= targetBytes || quality <= 0.25) resolve(dataUrl);
+          else { quality = Math.max(quality - 0.1, 0.25); tryEncode(); }
+        };
+        tryEncode();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadToCloudinary(file) {
+  const isVideo = file.type.startsWith('video/');
+  const isImage = file.type.startsWith('image/');
+  if (!isImage && !isVideo) return null;
+
+  let uploadFile = file;
+  if (isImage) {
+    const blob = await compressImageToBlob(file, 1200, 0.85);
+    if (blob) uploadFile = new File([blob], file.name || 'photo.jpg', { type: 'image/jpeg' });
+  }
+
+  const formData = new FormData();
+  formData.append('file', uploadFile);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  formData.append('folder', 'asom-media');
+
+  const resourceType = isVideo ? 'video' : 'image';
+  const apiUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+  const response = await fetch(apiUrl, { method: 'POST', body: formData });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Cloudinary error ${response.status}: ${errText}`);
+  }
+  const data = await response.json();
+  return { url: data.secure_url, publicId: data.public_id, isStorage: true };
+}
+
+// ============================================================
+// DATABASE — members / population (ข้อมูลอ้างอิง)
+// ============================================================
+async function dbGetMembers() {
+  const { data, error } = await db.from('members').select('*').eq('type','asom').order('village').order('name');
+  if (error) { dbErr('โหลดสมาชิก', error); return []; }
+  return data.map(m => ({ id: m.id, name: m.name||'', role: m.role||'', phone: m.phone||'', photo: m.photo_url||m.image_url||'', village: m.village||'' }));
+}
+
+async function dbGetPopulation() {
+  const PAGE = 1000; let all = [], from = 0;
+  while (true) {
+    const { data, error } = await db.from('population')
+      .select('id,village,house_number,full_name,gender,birthdate,id_card,phone')
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) { console.warn('population load error:', error.message); break; }
+    all = all.concat(data || []);
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all.map(p => ({
+    id: p.id,
+    village: String(p.village || ''),
+    houseNo: p.house_number || '',
+    fullName: p.full_name || '',
+    gender: p.gender || '',
+    birthDate: p.birthdate || '',
+    idCard: p.id_card || '',
+    phone: p.phone || ''
+  }));
+}
+
+// ============================================================
+// DATABASE — health_members
+// ============================================================
+function mapHealthRow(h) {
+  let diseases = [];
+  if (Array.isArray(h.diseases)) diseases = h.diseases;
+  else if (h.disease) diseases = [h.disease];
+
+  const idCardClean = (h.id_card || '').replace(/\D/g, '');
+  const popMatch = idCardClean
+    ? populationData.find(p => p.idCard && p.idCard.replace(/\D/g, '') === idCardClean)
+    : null;
+  const rawBirthDate = h.birthdate || h.birth_date || popMatch?.birthDate || '';
+  let age = h.age || null;
+  if (!age && rawBirthDate) {
+    const birth = new Date(rawBirthDate);
+    const today = new Date();
+    let y = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) y--;
+    age = Math.max(0, y);
+  }
+
+  return {
+    id: h.id,
+    asomId: h.asom_id,
+    firstName: h.first_name || '',
+    lastName: h.last_name || '',
+    address: h.address || '',
+    idCard: h.id_card || '',
+    edu: h.education || '',
+    phone: h.phone || '',
+    gender: h.gender || '',
+    birthDate: rawBirthDate,
+    age: age,
+    caretaker: h.caretaker || '',
+    diseases: diseases,
+    disabilityType: h.disability_type || '',
+    diseaseOther: h.disease_other || '',
+    diseaseNote: h.disease_note || '',
+    height: h.height,
+    weight: h.weight,
+    bmi: h.bmi,
+    bp1: h.blood_pressure_1 || '',
+    bp2: '',
+    bp3: '',
+    bp: h.blood_pressure_1 || h.blood_pressure || '',
+    bpSys: (h.blood_pressure_1||'').split('/')[0] || '',
+    bpDia: (h.blood_pressure_1||'').split('/')[1] || '',
+    bpPul: (h.blood_pressure_1||'').split('/')[2] || '',
+    bloodSugar: h.blood_sugar,
+    headSize: h.head_size,
+    vaccineCompleted: h.vaccine_completed || false,
+    developmentNormal: h.development_normal !== false,
+    photo: h.photo_url || ''
+  };
+}
+
+async function dbGetHealth(asomId) {
+  const { data, error } = await db.from('health_members').select('*').eq('asom_id', asomId).order('address');
+  if (error) { dbErr('โหลดข้อมูลสุขภาพ', error); return []; }
+  return data.map(mapHealthRow);
+}
+
+async function dbGetAllHealth() {
+  const { data, error } = await db.from('health_members').select('*').order('address');
+  if (error) { console.warn('โหลด health_members ทั้งหมดล้มเหลว:', error); return []; }
+  return data.map(mapHealthRow);
+}
+
+function buildHealthPayload(d) {
+  return {
+    first_name: d.firstName,
+    last_name: d.lastName,
+    address: d.address,
+    id_card: d.idCard,
+    phone: d.phone,
+    gender: d.gender || null,
+    birthdate: d.birthDate || null,
+    age: d.age || null,
+    caretaker: d.caretaker || null,
+    disease: Array.isArray(d.diseases) ? d.diseases.join(', ') : (d.diseases || ''),
+    diseases: Array.isArray(d.diseases) ? d.diseases : [],
+    disability_type: d.disabilityType || null,
+    disease_other: d.diseaseOther || null,
+    disease_note: d.diseaseNote || null,
+    height: d.height || null,
+    weight: d.weight || null,
+    bmi: d.bmi || null,
+    blood_pressure_1: d.bp1 || null,
+    blood_pressure_2: null,
+    blood_pressure_3: null,
+    blood_pressure: d.bp1 || null,
+    blood_sugar: d.bloodSugar || null,
+    head_size: d.headSize || null,
+    vaccine_completed: d.vaccineCompleted || false,
+    development_normal: d.developmentNormal !== false,
+    photo_url: d.photo || ''
+  };
+}
+
+async function dbAddHealth(d) {
+  const insertData = { asom_id: d.asomId, ...buildHealthPayload(d) };
+  const { data, error } = await db.from('health_members').insert(insertData).select().single();
+  if (error) { dbErr('เพิ่มสมาชิก', error); return null; }
+  return data.id;
+}
+
+async function dbUpdateHealth(id, d) {
+  const { error } = await db.from('health_members').update(buildHealthPayload(d)).eq('id', id);
+  if (error) { dbErr('แก้ไขสมาชิก', error); return false; }
+  return true;
+}
+
+async function dbDeleteHealth(id) {
+  const { error } = await db.from('health_members').delete().eq('id', id);
+  if (error) { dbErr('ลบสมาชิก', error); return false; }
+  return true;
+}
+
+// ============================================================
+// DATABASE — password + session (ระบบล็อกอิน อสม.)
+// ============================================================
+async function dbGetPassword(asomId) {
+  const { data, error } = await db.from('asom_passwords').select('password').eq('asom_id', asomId).single();
+  if (error) return null;
+  return data?.password || null;
+}
+async function dbSetPassword(asomId, password) {
+  const { error } = await db.from('asom_passwords').upsert({ asom_id: asomId, password }, { onConflict: 'asom_id' });
+  if (error) { dbErr('บันทึกรหัสผ่าน', error); return false; }
+  return true;
+}
+
+function generateSessionToken() {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function dbCreateSession(asomId) {
+  const token = generateSessionToken();
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 วัน
+  const { error } = await db.from('asom_sessions').insert({ asom_id: asomId, session_token: token, expires_at: expiresAt });
+  if (error) { console.warn('createSession error:', error); return null; }
+  return token;
+}
+async function dbVerifySession(token) {
+  if (!token) return null;
+  const { data, error } = await db.from('asom_sessions').select('asom_id, expires_at').eq('session_token', token).single();
+  if (error || !data) return null;
+  if (new Date(data.expires_at) < new Date()) {
+    await db.from('asom_sessions').delete().eq('session_token', token);
+    return null;
+  }
+  return data.asom_id;
+}
+async function dbDeleteSession(token) {
+  if (!token) return;
+  await db.from('asom_sessions').delete().eq('session_token', token);
+}
+function saveSessionLocal(token) { localStorage.setItem('asomSessionToken', token); }
+function getSessionLocal() { return localStorage.getItem('asomSessionToken') || null; }
+function clearSessionLocal() { localStorage.removeItem('asomSessionToken'); }
+
+// ============================================================
+// INIT + RENDER
+// ============================================================
+async function initApp() {
+  try {
+    const [membersData, popData, allHealthData] = await Promise.all([
+      dbGetMembers(), dbGetPopulation(), dbGetAllHealth()
+    ]);
+    members = membersData;
+    populationData = popData;
+    // เติม birthdate จาก population ให้สมาชิกที่ยังไม่มีข้อมูล
+    allHealthMembers = allHealthData.map(h => {
+      if (h.birthDate) return h;
+      const clean = (h.idCard || '').replace(/\D/g, '');
+      if (!clean) return h;
+      const pop = populationData.find(p => p.idCard && p.idCard.replace(/\D/g, '') === clean);
+      if (!pop?.birthDate) return h;
+      const fa = calcFullAge(pop.birthDate);
+      return { ...h, birthDate: pop.birthDate, age: fa ? fa.years : h.age };
+    });
+
+    // ตรวจสอบ session token
+    const sessionToken = getSessionLocal();
+    if (sessionToken) {
+      const asomId = await dbVerifySession(sessionToken);
+      if (asomId) {
+        loggedInAsom = members.find(m => String(m.id) === String(asomId)) || null;
+        if (loggedInAsom) healthMembers = await dbGetHealth(asomId);
+      } else {
+        clearSessionLocal();
+      }
+    }
+    showToast('✅ เชื่อมต่อฐานข้อมูลสำเร็จ');
+  } catch(err) {
+    console.error('initApp error:', err);
+    showToast('⚠️ โหลดข้อมูลไม่ได้');
+  }
+  render();
+}
+
+function render() {
+  const el = document.getElementById('mainContent');
+  el.innerHTML = loggedInAsom ? renderHealth() : renderHealthLogin();
+}
+
+// ============================================================
+// HEALTH MEMBERS PAGE — TABLE
+// ============================================================
+function buildHealthRow(h) {
+  const diseases = Array.isArray(h.diseases) ? h.diseases.join(', ') : h.diseases || '-';
+  const ph = h.photo
+    ? `<img src="${h.photo}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green-light);">`
+    : personIconSVG(44);
+  const fa = h.birthDate ? calcFullAge(h.birthDate) : null;
+  const birthdayTxt = h.birthDate ? formatThaiDateFull(h.birthDate) : '-';
+  const ageYearTxt  = fa ? `${fa.years}` : (h.age !== null && h.age !== undefined ? `${h.age}` : '-');
+  const ageMonthTxt = fa ? `${fa.months}` : '-';
+  const ageDayTxt   = fa ? `${fa.days}` : '-';
+  const bp1 = h.bp1 || (h.bp ? h.bp : '');
+  const bpHtml = bp1
+    ? `<span class="bp-badge">${bp1}</span>${h.bp2?` <span class="bp-badge">${h.bp2}</span>`:''} ${h.bp3?`<span class="bp-badge">${h.bp3}</span>`:''}`
+    : '<span style="color:var(--gray-mid)">-</span>';
+  const bmiVal = parseFloat(h.bmi) || 0;
+  let bc = 'bmi-normal', bl = 'ปกติ';
+  if (bmiVal < 18.5)                    { bc = 'bmi-under'; bl = 'ผอม'; }
+  else if (bmiVal >= 25 && bmiVal < 30) { bc = 'bmi-over';  bl = 'น้ำหนักเกิน'; }
+  else if (bmiVal >= 30)                { bc = 'bmi-obese'; bl = 'อ้วน'; }
+
+  return `<tr>
+    <td style="text-align:center;padding:8px;">${ph}</td>
+    <td style="padding:8px;">${h.firstName} ${h.lastName}</td>
+    <td style="padding:8px;">${h.address||'-'}</td>
+    <td style="padding:8px;">${h.gender||'-'}</td>
+    <td style="padding:8px;white-space:nowrap;font-size:12px;">${birthdayTxt}</td>
+    <td style="padding:8px;text-align:center;">${ageYearTxt}</td>
+    <td style="padding:8px;text-align:center;">${ageMonthTxt}</td>
+    <td style="padding:8px;text-align:center;">${ageDayTxt}</td>
+    <td style="padding:8px;">${h.phone||'-'}</td>
+    <td style="padding:8px;max-width:160px;"><span style="font-size:12px;">${diseases}</span></td>
+    <td style="padding:8px;">${h.height||'-'}</td>
+    <td style="padding:8px;">${h.weight||'-'}</td>
+    <td style="padding:8px;"><span class="bmi-badge ${bc}">${h.bmi||'-'} <small>${bl}</small></span></td>
+    <td style="padding:8px;">${bpHtml}</td>
+    <td style="padding:8px;">${h.bloodSugar||'-'}</td>
+    <td style="padding:8px;white-space:nowrap;">
+      <button class="btn-edit" onclick="editHealthMember(${h.id})">แก้ไข</button>
+      <button class="btn-danger" style="margin-left:4px;" onclick="deleteHealthMember(${h.id})">ลบ</button>
+    </td>
+  </tr>`;
+}
+
+function renderHealth() {
+  const myMembers = healthMembers.filter(h => String(h.asomId) === String(loggedInAsom?.id));
+  const rows = myMembers.map(buildHealthRow).join('')
+    || '<tr><td colspan="16" class="text-center" style="color:var(--gray-mid);padding:20px;">ยังไม่มีสมาชิก กดปุ่ม "เพิ่มสมาชิก" เพื่อเริ่มต้น</td></tr>';
+
+  return `
+    <p class="section-title">👨‍👩‍👧 สมาชิกที่ดูแล</p>
+    <p class="section-sub">อสม. ${loggedInAsom?.name||''} | ดูแลสมาชิก ${myMembers.length} คน</p>
+    <div style="background:var(--green-pale);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1.5px solid var(--green-light);">
+      <span style="font-size:14px;font-weight:600;color:var(--green-dark);">👤 ${loggedInAsom?.name||''}</span>
+      <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;">
+        <button class="btn-primary" onclick="openAddHealthModal()">➕ เพิ่มสมาชิก</button>
+        <button class="btn-excel" onclick="exportHealthExcel()">📊 Export Excel</button>
+        <button onclick="logoutHealth()" style="background:none;border:1.5px solid #ccc;border-radius:8px;padding:7px 14px;cursor:pointer;font-family:Sarabun,sans-serif;font-size:13px;">ออกจากระบบ</button>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <input id="filterName" placeholder="🔍 ค้นหาชื่อ..." oninput="filterHealth()" style="flex:1;min-width:140px;">
+      <select id="filterDisease" onchange="filterHealth()">
+        <option value="">โรคทั้งหมด</option>
+        <option>เบาหวาน</option><option>ความดัน</option><option>โรคหัวใจ</option><option>โรคไต</option>
+        <option>พิการ</option><option>ผู้ป่วยติดเตียง</option><option>โรคมะเร็ง</option>
+      </select>
+      <select id="filterGender" onchange="filterHealth()">
+        <option value="">เพศทั้งหมด</option><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option>
+      </select>
+    </div>
+    <div class="health-table-wrap" style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;min-width:1000px;">
+        <thead style="background:var(--green-dark);color:white;">
+          <tr>
+            <th style="padding:10px;font-size:13px;text-align:center;">รูป</th>
+            <th style="padding:10px;text-align:left;font-size:13px;">ชื่อ-สกุล</th>
+            <th style="padding:10px;font-size:13px;">บ้านเลขที่</th>
+            <th style="padding:10px;font-size:13px;">เพศ</th>
+            <th style="padding:10px;font-size:13px;">วันเดือนปีเกิด (พ.ศ.)</th>
+            <th style="padding:10px;font-size:13px;">อายุปี</th>
+            <th style="padding:10px;font-size:13px;">อายุเดือน</th>
+            <th style="padding:10px;font-size:13px;">อายุวัน</th>
+            <th style="padding:10px;font-size:13px;">เบอร์</th>
+            <th style="padding:10px;font-size:13px;">โรคประจำตัว</th>
+            <th style="padding:10px;font-size:13px;">สูง</th>
+            <th style="padding:10px;font-size:13px;">น้ำหนัก</th>
+            <th style="padding:10px;font-size:13px;">BMI</th>
+            <th style="padding:10px;font-size:13px;">ความดัน</th>
+            <th style="padding:10px;font-size:13px;">น้ำตาล</th>
+            <th style="padding:10px;font-size:13px;">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="healthTableBody">${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function filterHealth() {
+  const name = (document.getElementById('filterName')?.value||'').toLowerCase();
+  const disease = document.getElementById('filterDisease')?.value||'';
+  const gender = document.getElementById('filterGender')?.value||'';
+  const myMembers = healthMembers.filter(h => {
+    if (String(h.asomId)!==String(loggedInAsom?.id)) return false;
+    if (name && !(h.firstName+' '+h.lastName).toLowerCase().includes(name)) return false;
+    const hDiseases = Array.isArray(h.diseases) ? h.diseases.join(' ') : (h.diseases||'');
+    if (disease && !hDiseases.includes(disease)) return false;
+    if (gender && h.gender !== gender) return false;
+    return true;
+  });
+  const tbody = document.getElementById('healthTableBody'); if(!tbody) return;
+  tbody.innerHTML = myMembers.map(buildHealthRow).join('')
+    || '<tr><td colspan="16" class="text-center" style="color:var(--gray-mid);padding:20px;">ไม่พบข้อมูล</td></tr>';
+}
+
+// ============================================================
+// LOGIN (เลือก อสม. + รหัสผ่าน + จดจำ session)
+// ============================================================
+function renderHealthLogin() {
+  return `
+    <p class="section-title">👨‍👩‍👧 สมาชิกลูกป๊อก</p>
+    <p class="section-sub">กรุณาเข้าสู่ระบบด้วยบัญชี อสม. ของคุณ</p>
+    <div class="login-box">
+      <div style="text-align:center;font-size:48px;margin-bottom:12px;">🏥</div>
+      <h2 style="text-align:center;">เข้าสู่ระบบ อสม.</h2>
+      <p style="font-size:13px;color:var(--gray-mid);text-align:center;margin-bottom:22px;">รหัสผ่านเก็บใน Supabase — ปลอดภัยทุกอุปกรณ์</p>
+      <div class="form-group">
+        <label>เลือก อสม.</label>
+        <select id="loginSelect" onchange="onAsomSelectChange()">
+          <option value="">-- เลือกชื่อของคุณ --</option>
+          ${members.map(m=>`<option value="${m.id}">${m.name}${m.village?' (หมู่ '+m.village+')':''}</option>`).join('')}
+        </select>
+      </div>
+      <div id="setPwPanel" style="display:none;margin-top:16px;">
+        <div style="background:#fff8e1;border-left:4px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#7a5500;">🔐 กำหนดรหัสผ่านครั้งแรก (อย่างน้อย 6 ตัวอักษร)</div>
+        <div class="form-group"><label>รหัสผ่านใหม่</label><div style="position:relative;display:flex;align-items:center;"><input type="password" id="newPw1" placeholder="อย่างน้อย 6 ตัวอักษร" style="padding-right:36px;width:100%;"><button type="button" style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:18px;color:var(--gray-mid);" onclick="togglePwVis('newPw1',this)">👁</button></div></div>
+        <div class="form-group" style="margin-top:10px;"><label>ยืนยันรหัสผ่าน</label><div style="position:relative;display:flex;align-items:center;"><input type="password" id="newPw2" placeholder="ใส่รหัสผ่านซ้ำ" style="padding-right:36px;width:100%;" onkeypress="if(event.key==='Enter')doSetPassword()"><button type="button" style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:18px;color:var(--gray-mid);" onclick="togglePwVis('newPw2',this)">👁</button></div></div>
+        <button class="btn-primary" style="width:100%;margin-top:14px;" onclick="doSetPassword()">💾 บันทึกรหัสผ่าน</button>
+      </div>
+      <div id="loginPanel" style="display:none;margin-top:16px;">
+        <div class="form-group"><label>รหัสผ่าน</label><div style="position:relative;display:flex;align-items:center;"><input type="password" id="loginPw" placeholder="รหัสผ่าน" style="padding-right:36px;width:100%;" onkeypress="if(event.key==='Enter')doLogin()"><button type="button" style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:18px;color:var(--gray-mid);" onclick="togglePwVis('loginPw',this)">👁</button></div></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-top:12px;background:#e8f5ee;border-radius:8px;padding:10px 12px;border:1.5px solid var(--green-light);">
+          <input type="checkbox" id="rememberPw" style="width:18px;height:18px;accent-color:var(--green-mid);margin-top:2px;flex-shrink:0;">
+          <div>
+            <label for="rememberPw" style="font-size:13px;cursor:pointer;font-weight:600;color:var(--green-dark);margin:0;display:block;">🌐 จดจำการเข้าสู่ระบบ (ทุกอุปกรณ์)</label>
+            <span style="font-size:11px;color:var(--gray-mid);">บันทึก session ใน Supabase — ล็อกอินได้ทุกเครื่อง นาน 30 วัน</span>
+          </div>
+        </div>
+        <button class="btn-primary" style="width:100%;margin-top:14px;" onclick="doLogin()">🔑 เข้าสู่ระบบ</button>
+        <p style="text-align:center;margin-top:10px;"><button onclick="resetAsomPassword()" style="background:none;border:none;color:var(--gray-mid);font-size:12px;cursor:pointer;text-decoration:underline;">ตั้งรหัสผ่านใหม่</button></p>
+      </div>
+    </div>`;
+}
+
+async function onAsomSelectChange() {
+  const id = document.getElementById('loginSelect')?.value||'';
+  const setPwPanel = document.getElementById('setPwPanel');
+  const loginPanel = document.getElementById('loginPanel');
+  if (setPwPanel) setPwPanel.style.display='none';
+  if (loginPanel) loginPanel.style.display='none';
+  if (!id) return;
+  showToast('⏳ ตรวจสอบ...');
+  const pw = await dbGetPassword(id);
+  if (pw) { if (loginPanel) loginPanel.style.display='block'; }
+  else    { if (setPwPanel) setPwPanel.style.display='block'; }
+}
+
+function togglePwVis(inputId, btn) {
+  const input = document.getElementById(inputId); if (!input) return;
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  if (btn) btn.textContent = show ? '🙈' : '👁';
+}
+
+async function doSetPassword() {
+  const id  = document.getElementById('loginSelect')?.value||'';
+  const pw1 = document.getElementById('newPw1')?.value||'';
+  const pw2 = document.getElementById('newPw2')?.value||'';
+  if (!id) { showToast('❌ กรุณาเลือก อสม. ก่อน'); return; }
+  if (pw1.length < 6) { showToast('❌ รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'); return; }
+  if (pw1 !== pw2) { showToast('❌ รหัสผ่านไม่ตรงกัน'); return; }
+  const ok = await dbSetPassword(id, pw1);
+  if (ok) {
+    showToast('✅ ตั้งรหัสผ่านแล้ว');
+    document.getElementById('setPwPanel').style.display='none';
+    document.getElementById('loginPanel').style.display='block';
+    const pwEl = document.getElementById('loginPw'); if (pwEl) { pwEl.value=''; pwEl.focus(); }
+  }
+}
+
+async function resetAsomPassword() {
+  const id = document.getElementById('loginSelect')?.value||''; if (!id) return;
+  const m = members.find(x => String(x.id) === String(id));
+  if (!confirm(`ตั้งรหัสผ่านใหม่สำหรับ "${m?.name||id}"?`)) return;
+  const { error } = await db.from('asom_passwords').delete().eq('asom_id', id);
+  if (!error) {
+    showToast('🔄 ลบรหัสผ่านเก่าแล้ว กรุณาตั้งใหม่');
+    document.getElementById('setPwPanel').style.display='block';
+    document.getElementById('loginPanel').style.display='none';
+    const p1 = document.getElementById('newPw1'); if (p1) p1.value='';
+    const p2 = document.getElementById('newPw2'); if (p2) p2.value='';
+  } else showToast('❌ ไม่สามารถลบรหัสผ่านได้');
+}
+
+async function doLogin() {
+  const id = document.getElementById('loginSelect')?.value || '';
+  const pw = document.getElementById('loginPw')?.value || '';
+  const remember = document.getElementById('rememberPw')?.checked || false;
+  if (!id) { showToast('❌ กรุณาเลือก อสม. ก่อน'); return; }
+  if (!pw) { showToast('❌ กรุณาใส่รหัสผ่าน'); return; }
+  showToast('⏳ กำลังตรวจสอบ...');
+  const dbPw = await dbGetPassword(id);
+  if (!dbPw) { showToast('❌ ยังไม่มีรหัสผ่าน กรุณาตั้งรหัสผ่านก่อน'); return; }
+  if (pw !== dbPw) { showToast('❌ รหัสผ่านไม่ถูกต้อง'); return; }
+  loggedInAsom = members.find(m => String(m.id) === String(id)) || null;
+  if (remember) {
+    showToast('⏳ กำลังบันทึก session...');
+    const token = await dbCreateSession(id);
+    if (token) { saveSessionLocal(token); showToast('✅ จดจำการเข้าสู่ระบบแล้ว (30 วัน)'); }
+  } else {
+    clearSessionLocal();
+  }
+  showToast('⏳ กำลังโหลดข้อมูลสมาชิก...');
+  healthMembers = await dbGetHealth(id);
+  showToast('✅ เข้าสู่ระบบสำเร็จ');
+  render();
+}
+
+async function logoutHealth() {
+  const token = getSessionLocal();
+  if (token) await dbDeleteSession(token);
+  clearSessionLocal();
+  loggedInAsom = null;
+  healthMembers = [];
+  render();
+}
+
+// ============================================================
+// HEALTH MODAL — เปิด/แก้ไข/บันทึก
+// ============================================================
+function openAddHealthModal() {
+  document.getElementById('editHealthId').value = '';
+  const fields = ['hFirstName','hLastName','hIdCard','hPhone','hHeight','hWeight','hBMI','hBPSys','hBPDia','hBPPul','hBloodSugar','hHeadSize','hDiseaseNote','hDiseaseOther','hHouseNo','hAddress','hFullNameSearch','hBirthDate'];
+  fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('hPrefix').value = '';
+  document.getElementById('hGender').value = '';
+  document.getElementById('hMoo').value = '';
+  document.getElementById('hDisabilityType').value = '';
+  const acList = document.getElementById('healthNameACList');
+  if (acList) { acList.innerHTML = ''; acList.style.display = 'none'; }
+  popFilteredByMoo = [];
+
+  document.getElementById('hPhotoPreview').src = '';
+  document.getElementById('hPhotoPreview').style.display = 'none';
+  document.getElementById('hPhotoPlaceholder').style.display = 'block';
+  document.getElementById('hPhotoClearBtn').style.display = 'none';
+  document.getElementById('hPhotoInfo').innerHTML = '';
+
+  document.getElementById('hAgeDisplay').innerHTML = '';
+  document.getElementById('bpStatusMsg').innerHTML = '';
+  document.getElementById('childHealthFields').style.display = 'none';
+  document.getElementById('hVaccine').checked = false;
+  document.getElementById('hDevNormal').checked = true;
+  setSelectedDiseases([]);
+  openModal('addHealthModal');
+}
+
+function editHealthMember(id) {
+  const h = healthMembers.find(x => x.id === id || String(x.id) === String(id)); if (!h) return;
+  document.getElementById('editHealthId').value = h.id;
+  document.getElementById('hPrefix').value    = '';
+  document.getElementById('hFirstName').value = h.firstName || '';
+  document.getElementById('hLastName').value  = h.lastName || '';
+
+  // parse address กลับ: "หมู่ 9 บ้านเลขที่ 123" → moo=9, house=123
+  const addrStr = h.address || '';
+  const mooMatch = addrStr.match(/หมู่\s*(\d+)/);
+  const houseMatch = addrStr.match(/บ้านเลขที่\s*(.+)/);
+  document.getElementById('hMoo').value     = mooMatch ? mooMatch[1] : '';
+  document.getElementById('hHouseNo').value = houseMatch ? houseMatch[1].trim() : '';
+  document.getElementById('hAddress').value = h.address || '';
+  document.getElementById('hFullNameSearch').value = `${h.firstName||''} ${h.lastName||''}`.trim();
+
+  document.getElementById('hIdCard').value = formatIdCardInput(h.idCard||'');
+  document.getElementById('hPhone').value = h.phone||'';
+  document.getElementById('hGender').value = h.gender||'';
+  document.getElementById('hHeight').value = h.height||'';
+  document.getElementById('hWeight').value = h.weight||'';
+  document.getElementById('hBMI').value = h.bmi||'';
+  document.getElementById('hBloodSugar').value = h.bloodSugar||'';
+  document.getElementById('hHeadSize').value = h.headSize||'';
+  document.getElementById('hVaccine').checked = h.vaccineCompleted||false;
+  document.getElementById('hDevNormal').checked = h.developmentNormal!==false;
+  document.getElementById('hDisabilityType').value = h.disabilityType||'';
+  document.getElementById('hDiseaseNote').value = h.diseaseNote||'';
+  const hOther = document.getElementById('hDiseaseOther'); if (hOther) hOther.value = h.diseaseOther||'';
+
+  const bpParts = (h.bp1||h.bp||'').split('/');
+  document.getElementById('hBPSys').value = bpParts[0]||'';
+  document.getElementById('hBPDia').value = bpParts[1]||'';
+  document.getElementById('hBPPul').value = bpParts[2]||h.bpPul||'';
+
+  // วันเกิด: ใช้ค่าที่บันทึกไว้ ถ้าไม่มีให้ cross-reference จาก population
+  let resolvedBirthDate = h.birthDate || '';
+  if (!resolvedBirthDate && h.idCard) {
+    const idClean = (h.idCard||'').replace(/\D/g,'');
+    const popRec = idClean ? populationData.find(p => p.idCard && p.idCard.replace(/\D/g,'') === idClean) : null;
+    if (popRec?.birthDate) resolvedBirthDate = popRec.birthDate;
+  }
+  setBirthDateFromISO(resolvedBirthDate);
+  setSelectedDiseases(h.diseases||[]);
+
+  const prevEl = document.getElementById('hPhotoPreview');
+  const placeholder = document.getElementById('hPhotoPlaceholder');
+  const clearBtn = document.getElementById('hPhotoClearBtn');
+  const infoEl = document.getElementById('hPhotoInfo');
+  if (h.photo) {
+    prevEl.src = h.photo; prevEl.style.display = 'block';
+    placeholder.style.display = 'none';
+    clearBtn.style.display = 'inline-block';
+    infoEl.innerHTML = '<span style="color:var(--green-dark);">✅ มีรูปภาพอยู่แล้ว</span>';
+  } else {
+    prevEl.src = ''; prevEl.style.display = 'none';
+    placeholder.style.display = 'block';
+    clearBtn.style.display = 'none';
+    infoEl.innerHTML = '';
+  }
+  updateBPStatus();
+  openModal('addHealthModal');
+}
+
+function previewHealthPhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const infoEl      = document.getElementById('hPhotoInfo');
+  const previewEl   = document.getElementById('hPhotoPreview');
+  const placeholder = document.getElementById('hPhotoPlaceholder');
+  const clearBtn    = document.getElementById('hPhotoClearBtn');
+  const fileSizeMB  = (file.size / 1024 / 1024).toFixed(2);
+
+  if (infoEl) infoEl.innerHTML = `⏳ กำลังประมวลผล... (${fileSizeMB} MB)`;
+
+  resizeImageForStorage(file).then(dataUrl => {
+    if (!dataUrl) {
+      if (infoEl) infoEl.innerHTML = `<span style="color:#c62828;">❌ ประมวลผลไม่สำเร็จ</span>`;
+      return;
+    }
+    if (previewEl)   { previewEl.src = dataUrl; previewEl.style.display = 'block'; }
+    if (placeholder) { placeholder.style.display = 'none'; }
+    if (clearBtn)    { clearBtn.style.display = 'inline-block'; }
+    const compressedMB = ((dataUrl.length * 0.75) / 1024 / 1024).toFixed(2);
+    if (infoEl) {
+      infoEl.innerHTML = `
+        <span style="color:var(--green-dark);">✅ พร้อมบันทึก</span><br>
+        ต้นฉบับ: <strong>${fileSizeMB} MB</strong><br>
+        หลังบีบอัด: <strong>${compressedMB} MB</strong>`;
+    }
+  });
+}
+
+function clearHealthPhoto() {
+  const previewEl = document.getElementById('hPhotoPreview');
+  previewEl.src = ''; previewEl.style.display = 'none';
+  document.getElementById('hPhotoPlaceholder').style.display = 'block';
+  document.getElementById('hPhotoClearBtn').style.display = 'none';
+  document.getElementById('hPhotoInfo').innerHTML = '';
+}
+
+async function saveHealthMember() {
+  const editId = document.getElementById('editHealthId').value;
+  const firstName = document.getElementById('hFirstName').value.trim();
+  const lastName  = document.getElementById('hLastName').value.trim();
+  if (!firstName) { showToast('❌ กรุณาใส่ชื่อ'); return; }
+
+  const bpSys = document.getElementById('hBPSys').value.trim();
+  const bpDia = document.getElementById('hBPDia').value.trim();
+  const bpPul = document.getElementById('hBPPul').value.trim();
+  if ((bpSys && isNaN(parseInt(bpSys))) || (bpDia && isNaN(parseInt(bpDia)))) { showToast('❌ ค่าความดันต้องเป็นตัวเลข'); return; }
+  const bp1 = bpSys && bpDia ? `${bpSys}/${bpDia}${bpPul ? '/'+bpPul : ''}` : '';
+
+  const headSize = document.getElementById('hHeadSize').value;
+  if (headSize && isNaN(parseFloat(headSize))) { showToast('❌ รอบศีรษะต้องเป็นตัวเลข'); return; }
+
+  const birthDate = getBirthDateISO();
+  if (birthDate && new Date(birthDate) > new Date()) { showToast('❌ วันเกิดห้ามเกินวันปัจจุบัน'); return; }
+
+  const age = birthDate ? calcAgeFromDate(birthDate) : null;
+  const diseases = getSelectedDiseases();
+
+  // รูปภาพ: ถ้าเป็น base64 (เลือกใหม่) → อัปโหลด Cloudinary, ถ้าเป็น URL เดิม → ใช้ต่อ
+  const previewEl = document.getElementById('hPhotoPreview');
+  let photoSrc = '';
+  if (previewEl && previewEl.style.display !== 'none' && previewEl.src) {
+    const rawSrc = previewEl.src;
+    if (rawSrc.startsWith('data:image/')) {
+      showToast('⏳ กำลังอัปโหลดรูปสมาชิก...');
+      try {
+        const blob = await (await fetch(rawSrc)).blob();
+        const tmpFile = new File([blob], 'member-photo.jpg', { type: 'image/jpeg' });
+        const uploadResult = await uploadToCloudinary(tmpFile);
+        photoSrc = uploadResult?.url || rawSrc;
+      } catch (uploadErr) {
+        console.warn('Photo upload failed, using base64:', uploadErr);
+        photoSrc = rawSrc;
+      }
+    } else if (rawSrc !== window.location.href) {
+      photoSrc = rawSrc;
+    }
+  }
+
+  const data = {
+    asomId: loggedInAsom?.id,
+    caretaker: loggedInAsom?.name || '',
+    firstName, lastName,
+    address: (() => {
+      const addrVal = document.getElementById('hAddress').value.trim();
+      if (addrVal) return addrVal;
+      const m  = document.getElementById('hMoo')?.value || '';
+      const h2 = document.getElementById('hHouseNo')?.value.trim() || '';
+      if (m && h2) return `หมู่ ${m} บ้านเลขที่ ${h2}`;
+      if (m) return `หมู่ ${m}`;
+      return h2;
+    })(),
+    idCard: document.getElementById('hIdCard').value.replace(/\D/g,'').trim(),
+    phone: document.getElementById('hPhone').value.trim(),
+    gender: document.getElementById('hGender').value,
+    birthDate: birthDate || null,
+    age,
+    diseases,
+    disabilityType: diseases.includes('พิการ') ? document.getElementById('hDisabilityType').value : '',
+    diseaseOther: diseases.includes('อื่นๆ') ? document.getElementById('hDiseaseOther')?.value||'' : '',
+    diseaseNote: document.getElementById('hDiseaseNote').value.trim(),
+    height: document.getElementById('hHeight').value||null,
+    weight: document.getElementById('hWeight').value||null,
+    bmi: document.getElementById('hBMI').value||null,
+    bp1, bp2: '', bp3: '',
+    bpSys: bpSys||null, bpDia: bpDia||null, bpPul: bpPul||null,
+    bpStatus: bpSys && bpDia ? bpStatusText(bpSys, bpDia) : '',
+    bp: bp1,
+    bloodSugar: document.getElementById('hBloodSugar').value||null,
+    headSize: headSize||null,
+    vaccineCompleted: document.getElementById('hVaccine').checked,
+    developmentNormal: document.getElementById('hDevNormal').checked,
+    photo: photoSrc
+  };
+
+  showToast('⏳ กำลังบันทึก...');
+  if (editId) {
+    const ok = await dbUpdateHealth(Number(editId), data);
+    if (ok) {
+      const i = healthMembers.findIndex(x => String(x.id) === String(editId));
+      if (i >= 0) healthMembers[i] = { ...data, id: Number(editId) };
+      const j = allHealthMembers.findIndex(x => String(x.id) === String(editId));
+      if (j >= 0) allHealthMembers[j] = { ...data, id: Number(editId) };
+      showToast('✅ แก้ไขข้อมูลสมาชิกแล้ว');
+    }
+  } else {
+    const newId = await dbAddHealth(data);
+    if (newId) {
+      healthMembers.push({ ...data, id: newId });
+      allHealthMembers.push({ ...data, id: newId });
+      showToast('✅ เพิ่มสมาชิกแล้ว');
+    }
+  }
+  closeModal('addHealthModal'); render();
+}
+
+async function deleteHealthMember(id) {
+  if (!confirm('ยืนยันการลบสมาชิก?')) return;
+  const ok = await dbDeleteHealth(id);
+  if (ok) {
+    healthMembers = healthMembers.filter(h => h.id!==id && String(h.id)!==String(id));
+    allHealthMembers = allHealthMembers.filter(h => h.id!==id && String(h.id)!==String(id));
+    showToast('🗑️ ลบสมาชิกแล้ว'); render();
+  }
+}
+
+// ============================================================
+// HEALTH MODAL — ดึงชื่อจาก population (หมู่ → บ้านเลขที่ → ชื่อ)
+// ============================================================
+async function loadPopulationByMoo() {
+  const moo = document.getElementById('hMoo')?.value || '';
+  const houseInput = document.getElementById('hHouseNo');
+  if (houseInput) houseInput.value = '';
+  updateHealthAddress();
+  popFilteredByMoo = moo ? populationData.filter(p => String(p.village) === moo) : [];
+  const acList = document.getElementById('healthNameACList');
+  const searchInput = document.getElementById('hFullNameSearch');
+  if (acList) { acList.innerHTML = ''; acList.style.display = 'none'; }
+  if (searchInput) searchInput.value = '';
+  const dl = document.getElementById('hHouseNoList');
+  if (dl) {
+    dl.innerHTML = '';
+    const houses = [...new Set(popFilteredByMoo.map(p => p.houseNo).filter(Boolean))].sort((a,b) => parseFloat(a)-parseFloat(b));
+    houses.forEach(h => { const opt = document.createElement('option'); opt.value = h; dl.appendChild(opt); });
+  }
+}
+
+function popAutocompleteItem(p, showHouse) {
+  const age = calcAgeFromDate(p.birthDate);
+  const item = document.createElement('div');
+  item.className = 'autocomplete-item';
+  item.innerHTML = `<strong>${p.fullName || '-'}</strong>`
+    + (showHouse ? `<span style="color:var(--gray-mid);margin-left:8px;font-size:11px;">บ้านเลขที่ ${p.houseNo||'-'}</span>` : '')
+    + (p.gender ? `<span style="background:${p.gender==='ชาย'?'#e3f2fd':'#fce4ec'};color:${p.gender==='ชาย'?'#1565c0':'#880e4f'};border-radius:6px;padding:1px 8px;font-size:11px;margin-left:8px;">${p.gender}</span>` : '')
+    + (age !== null ? `<span style="background:var(--green-pale);color:var(--green-dark);border-radius:6px;padding:1px 8px;font-size:11px;margin-left:6px;">${age} ปี</span>` : '');
+  item.onclick = () => {
+    fillHealthFromPopulation(p);
+    const acList = document.getElementById('healthNameACList');
+    acList.innerHTML = ''; acList.style.display = 'none';
+    document.getElementById('hFullNameSearch').value = p.fullName || '';
+  };
+  return item;
+}
+
+function filterPopulationByHouse() {
+  updateHealthAddress();
+  const house = (document.getElementById('hHouseNo')?.value || '').trim();
+  const moo   = document.getElementById('hMoo')?.value || '';
+  const acList = document.getElementById('healthNameACList');
+  if (!acList) return;
+  if (!house) { acList.innerHTML = ''; acList.style.display = 'none'; return; }
+  const pool = moo ? populationData.filter(p => String(p.village) === moo) : populationData;
+  const inHouse = pool.filter(p => p.houseNo === house);
+  if (!inHouse.length) { acList.innerHTML = ''; acList.style.display = 'none'; return; }
+  acList.innerHTML = '';
+  inHouse.forEach(p => acList.appendChild(popAutocompleteItem(p, false)));
+  acList.style.display = 'block';
+}
+
+function updateHealthAddress() {
+  const moo = document.getElementById('hMoo')?.value || '';
+  const house = document.getElementById('hHouseNo')?.value || '';
+  const addrEl = document.getElementById('hAddress');
+  if (addrEl) {
+    if (moo && house) addrEl.value = `หมู่ ${moo} บ้านเลขที่ ${house}`;
+    else if (moo) addrEl.value = `หมู่ ${moo}`;
+    else addrEl.value = '';
+  }
+}
+
+function filterHealthNameAC(query) {
+  const acList = document.getElementById('healthNameACList');
+  if (!acList) return;
+  acList.innerHTML = '';
+  const moo = document.getElementById('hMoo')?.value || '';
+  const pool = moo ? populationData.filter(p => String(p.village) === moo) : populationData;
+  const q = (query || '').toLowerCase().trim();
+  if (!q) { acList.style.display = 'none'; return; }
+  const filtered = pool.filter(p => (p.fullName || '').toLowerCase().includes(q)).slice(0, 10);
+  if (!filtered.length) { acList.style.display = 'none'; return; }
+  filtered.forEach(p => acList.appendChild(popAutocompleteItem(p, true)));
+  acList.style.display = 'block';
+}
+
+function fillHealthFromPopulation(p) {
+  const prefixes = ['เด็กชาย','เด็กหญิง','นางสาว','นาง','นาย'];
+  let detectedPrefix = '';
+  let fullNameNoPrefix = p.fullName || '';
+  for (const px of prefixes) {
+    if (fullNameNoPrefix.startsWith(px)) {
+      detectedPrefix = px;
+      fullNameNoPrefix = fullNameNoPrefix.slice(px.length).trim();
+      break;
+    }
+  }
+  const nameParts = fullNameNoPrefix.split(/\s+/);
+  const fname = nameParts[0] || '';
+  const lname = nameParts.slice(1).join(' ') || '';
+
+  document.getElementById('hPrefix').value    = '';
+  document.getElementById('hFirstName').value = detectedPrefix ? `${detectedPrefix}${fname}` : fname;
+  document.getElementById('hLastName').value  = lname;
+  document.getElementById('hGender').value    = p.gender  || '';
+  document.getElementById('hIdCard').value    = formatIdCardInput(p.idCard || '');
+  document.getElementById('hPhone').value     = p.phone   || '';
+  if (p.houseNo) document.getElementById('hHouseNo').value = p.houseNo;
+  if (p.village) document.getElementById('hMoo').value     = p.village;
+  updateHealthAddress();
+  if (p.birthDate) setBirthDateFromISO(p.birthDate);
+  else {
+    const bdEl = document.getElementById('hBirthDate');
+    if (bdEl) bdEl.value = '';
+    document.getElementById('hAgeDisplay').innerHTML = '';
+  }
+  showToast(`✅ ดึงข้อมูล ${p.fullName || '-'} สำเร็จ`);
+}
+
+// ปิด autocomplete เมื่อคลิกที่อื่น
+document.addEventListener('click', e => {
+  const acList = document.getElementById('healthNameACList');
+  const input = document.getElementById('hFullNameSearch');
+  if (acList && input && !input.contains(e.target) && !acList.contains(e.target)) {
+    acList.style.display = 'none';
+  }
+});
+
+// ============================================================
+// EXCEL EXPORT (รายชื่อ / โรค / เด็ก 0-5 ปี / ผู้สูงอายุ)
+// ============================================================
+function exportHealthExcel() {
+  const data = loggedInAsom ? healthMembers.filter(h => String(h.asomId) === String(loggedInAsom?.id)) : allHealthMembers;
+  if (!data.length) { showToast('⚠️ ยังไม่มีข้อมูลสมาชิก'); return; }
+  const wb = XLSX.utils.book_new();
+  const today = new Date();
+  const exportDate = `${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()+543}`;
+
+  // Sheet 1: รายชื่อสมาชิก
+  const membersSheet = [
+    [`รายชื่อสมาชิก อสม.`, '', '', '', '', '', `วันที่ Export: ${exportDate}`],
+    [],
+    ['ลำดับ','ชื่อ','นามสกุล','เพศ','อายุ','วันเกิด','บ้านเลขที่','เลขบัตรปชช.','เบอร์โทร','โรคประจำตัว','ส่วนสูง(ซม.)','น้ำหนัก(กก.)','BMI','ความดัน1','ความดัน2','ความดัน3','น้ำตาลในเลือด','ผู้ดูแล/อสม.']
+  ];
+  const sorted = [...data].sort((a,b) => (a.address||'').localeCompare(b.address||'', undefined, {numeric:true}));
+  sorted.forEach((h,i) => {
+    membersSheet.push([i+1, h.firstName, h.lastName, h.gender||'', h.age||'', h.birthDate||'', h.address||'', h.idCard||'', h.phone||'', Array.isArray(h.diseases)?h.diseases.join(', '):(h.diseases||''), h.height||'', h.weight||'', h.bmi||'', h.bp1||'', h.bp2||'', h.bp3||'', h.bloodSugar||'', h.caretaker||'']);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(membersSheet);
+  ws1['!cols'] = [{wch:6},{wch:14},{wch:14},{wch:6},{wch:6},{wch:12},{wch:10},{wch:16},{wch:13},{wch:30},{wch:10},{wch:10},{wch:8},{wch:10},{wch:10},{wch:10},{wch:12},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'รายชื่อสมาชิก');
+
+  // Sheet 2: รายงานโรค
+  const diseaseSheet = [[`รายงานโรคประจำตัว`, '', `วันที่ Export: ${exportDate}`],[],['โรค','จำนวน(คน)','ร้อยละ']];
+  const diseaseList = ['ปกติ','เบาหวาน','ความดัน','โรคหัวใจ','โรคไต','โรคเกาต์','โรคตับ','โรคมะเร็ง','หอบหืด','อัมพฤกษ์','อัมพาต','ผู้ป่วยติดเตียง','พิการ','อื่นๆ'];
+  const totalPeople = data.length;
+  diseaseList.forEach(d => {
+    const cnt = data.filter(h => (h.diseases||[]).includes(d)).length;
+    if (cnt > 0) diseaseSheet.push([d, cnt, totalPeople>0 ? ((cnt/totalPeople)*100).toFixed(1)+'%' : '0%']);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(diseaseSheet);
+  ws2['!cols'] = [{wch:20},{wch:12},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'รายงานโรค');
+
+  // Sheet 3: เด็ก 0-5 ปี
+  const children = data.filter(h => h.age <= 5 && h.age !== null && h.age !== undefined);
+  const childSheet = [['รายงานสุขภาพเด็ก 0-5 ปี', '', `วันที่ Export: ${exportDate}`],[],['ลำดับ','ชื่อ','นามสกุล','อายุ','เพศ','บ้านเลขที่','น้ำหนัก','ส่วนสูง','รอบศีรษะ','วัคซีนครบ','พัฒนาการสมวัย']];
+  children.forEach((h,i) => {
+    childSheet.push([i+1, h.firstName, h.lastName, h.age, h.gender||'', h.address||'', h.weight||'', h.height||'', h.headSize||'', h.vaccineCompleted?'ครบ':'ยังไม่ครบ', h.developmentNormal?'สมวัย':'ล่าช้า']);
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet(childSheet);
+  ws3['!cols'] = [{wch:6},{wch:14},{wch:14},{wch:6},{wch:6},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'รายงานเด็ก 0-5 ปี');
+
+  // Sheet 4: ผู้สูงอายุ 60+
+  const elderly = data.filter(h => h.age >= 60);
+  const elderlySheet = [['รายงานผู้สูงอายุ 60+ ปี', '', `วันที่ Export: ${exportDate}`],[],['ลำดับ','ชื่อ','นามสกุล','อายุ','เพศ','บ้านเลขที่','เบอร์โทร','โรคประจำตัว','ความดัน1','น้ำตาลในเลือด','ผู้ดูแล']];
+  elderly.forEach((h,i) => {
+    elderlySheet.push([i+1, h.firstName, h.lastName, h.age, h.gender||'', h.address||'', h.phone||'', Array.isArray(h.diseases)?h.diseases.join(', '):(h.diseases||''), h.bp1||'', h.bloodSugar||'', h.caretaker||'']);
+  });
+  const ws4 = XLSX.utils.aoa_to_sheet(elderlySheet);
+  ws4['!cols'] = [{wch:6},{wch:14},{wch:14},{wch:6},{wch:6},{wch:10},{wch:13},{wch:30},{wch:10},{wch:12},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws4, 'รายงานผู้สูงอายุ');
+
+  const fileName = `สมาชิก_อสม_${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+  showToast('✅ Export Excel สำเร็จ');
+}
+
+// ============================================================
+// START
+// ============================================================
+window.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
