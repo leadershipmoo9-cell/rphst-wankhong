@@ -294,6 +294,7 @@
     <button class="nav-btn" onclick="showPage('childnutrition',this)">👶 คัดกรองโภชนาการเด็ก 0-5 ปี</button>
     <button class="nav-btn" onclick="showPage('cervical',this)">🔬 คัดกรองมะเร็งปากมดลูก</button>
     <button class="nav-btn" onclick="showPage('breast',this)">🎗️ คัดกรองมะเร็งเต้านม</button>
+    <button class="nav-btn" onclick="showPage('lukpok',this)">👨‍👩‍👧 สมาชิกลูกป๊อก อสม.</button>
     <button class="nav-btn" onclick="showPage('dashboard',this)">📊 Dashboard</button>
     <button class="nav-btn" onclick="showPage('chat',this)">💬 ห้องแชท อสม.</button>
     <button class="nav-btn" onclick="showPage('contact',this)">📞 ติดต่อเรา</button>
@@ -610,7 +611,11 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
     <tbody id="brTable"></tbody>
   </table></div></div>
 </div>
-
+<!-- ── สมาชิกลูกป๊อก อสม. ── -->
+<div id="page-lukpok" class="page">
+  <iframe id="lukpokFrame" title="สมาชิกลูกป๊อก อสม."
+    style="width:100%;height:calc(100vh - 140px);min-height:720px;border:0;border-radius:12px;background:white;box-shadow:var(--shadow)"></iframe>
+</div>
    <!-- ── Dashboard ── -->
   <div id="page-dashboard" class="page">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
@@ -1596,6 +1601,7 @@ function showPage(page, btn) {
   else if(page==='dashboard') loadDashboard();
   else if(page==='chat') initChat();
   else if(page==='population') loadPopulation();
+  else if(page==='lukpok'){ const f=document.getElementById('lukpokFrame'); if(!f.getAttribute('src')) f.setAttribute('src','lukpok.html'); }
 }
 
 // ── ADMIN ──
