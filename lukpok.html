@@ -751,9 +751,11 @@ async function uploadToCloudinary(file) {
 // DATABASE — members / population (ข้อมูลอ้างอิง)
 // ============================================================
 async function dbGetMembers() {
-  const { data, error } = await db.from('members').select('*').eq('type','asom').order('village').order('name');
+  const { data, error } = await db.from('members').select('*').order('village').order('name');
   if (error) { dbErr('โหลดสมาชิก', error); return []; }
-  return data.map(m => ({ id: m.id, name: m.name||'', role: m.role||'', phone: m.phone||'', photo: m.photo_url||m.image_url||'', village: m.village||'' }));
+  return data
+    .filter(m => (m.type || 'asom') === 'asom')
+    .map(m => ({ id: m.id, name: m.name||'', role: m.role||'', phone: m.phone||'', photo: m.photo_url||m.image_url||'', village: m.village||'' }));
 }
 
 async function dbGetPopulation() {
