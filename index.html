@@ -245,6 +245,12 @@
 .dep-q label{display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;color:var(--green-dark)}
 .dep-q input{width:17px;height:17px;accent-color:var(--green-mid)}
 @media(max-width:600px){.chronic-grid{grid-template-columns:repeat(2,1fr)}}
+    /* ลูกป๊อก */
+.lp-chip{display:flex;align-items:center;gap:8px;padding:8px 12px;border:2px solid #dde8e1;border-radius:10px;cursor:pointer;font-size:13px;background:white}
+.lp-chip:has(input:checked){background:#e8f5ee;border-color:var(--green-mid);font-weight:600}
+.lp-chip input{width:17px;height:17px;accent-color:var(--green-mid)}
+.lp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(max-width:600px){.lp-grid{grid-template-columns:repeat(2,1fr)}}
   </style>
 </head>
 <body>
@@ -615,6 +621,10 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
 <div id="page-lukpok" class="page">
   <iframe id="lukpokFrame" title="สมาชิกลูกป๊อก อสม."
     style="width:100%;height:calc(100vh - 140px);min-height:720px;border:0;border-radius:12px;background:white;box-shadow:var(--shadow)"></iframe>
+</div>
+  <!-- ── สมาชิกลูกป๊อก อสม. ── -->
+<div id="page-lukpok" class="page">
+  <div id="lpBody"></div>
 </div>
    <!-- ── Dashboard ── -->
   <div id="page-dashboard" class="page">
@@ -1435,6 +1445,103 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
     <button class="btn-primary" style="width:100%;padding:12px;font-size:15px;margin-top:8px" onclick="saveBreast()">💾 บันทึกข้อมูล</button>
   </div>
 </div>
+  <div class="modal-overlay" id="modalLp">
+  <div class="modal" style="max-width:700px">
+    <button class="modal-close" onclick="closeModal('modalLp')">×</button>
+    <h2 id="lpFormTitle">👤 เพิ่มสมาชิกที่ดูแล</h2>
+    <input type="hidden" id="lpEditId">
+
+    <div class="health-section">
+      <div class="health-section-title">📋 ข้อมูลพื้นฐาน</div>
+      <div class="form-row">
+        <div class="form-group"><label>หมู่ที่ *</label>
+          <select id="lpMoo" onchange="lpSearchPop()">
+            <option value="">-- เลือกหมู่ --</option>
+            <option value="8">หมู่ 8</option><option value="9">หมู่ 9</option>
+            <option value="11">หมู่ 11</option><option value="13">หมู่ 13</option>
+            <option value="14">หมู่ 14</option><option value="16">หมู่ 16</option>
+          </select>
+        </div>
+        <div class="form-group"><label>บ้านเลขที่</label><input id="lpHouse" placeholder="เช่น 129, 2/3" oninput="lpSearchPopDelay()"></div>
+        <div class="form-group"><label>ค้นหาชื่อ</label><input id="lpSearch" placeholder="พิมพ์ชื่อ..." oninput="lpSearchPopDelay()"></div>
+      </div>
+      <div id="lpPopList" style="border:1.5px solid var(--green-light);border-radius:8px;max-height:200px;overflow-y:auto;background:white;display:none;margin-bottom:10px"></div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2"><label>ชื่อ *</label><input id="lpFirst" placeholder="รวมคำนำหน้า เช่น นายสมชาย"></div>
+        <div class="form-group"><label>นามสกุล</label><input id="lpLast"></div>
+        <div class="form-group"><label>เพศ</label><select id="lpGender"><option value="">-- เลือก --</option><option>ชาย</option><option>หญิง</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>วันเกิด (ค.ศ.)</label><input type="date" id="lpBirth" oninput="lpCalcAge()"></div>
+        <div class="form-group"><label>อายุ (อัตโนมัติ)</label><input id="lpAge" readonly style="background:#f5f7f6"></div>
+        <div class="form-group"><label>เบอร์โทร</label><input id="lpPhone"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>เลขบัตรประชาชน</label><input id="lpIdCard" maxlength="13"></div>
+        <div class="form-group"><label>ที่อยู่</label><input id="lpAddr" readonly style="background:#f5f7f6"></div>
+      </div>
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">💊 ข้อมูลสุขภาพ</div>
+      <div class="form-row">
+        <div class="form-group"><label>ส่วนสูง (ซม.)</label><input type="number" id="lpHeight" oninput="lpCalcBmi()"></div>
+        <div class="form-group"><label>น้ำหนัก (กก.)</label><input type="number" id="lpWeight" oninput="lpCalcBmi()"></div>
+        <div class="form-group"><label>BMI</label><input id="lpBmi" readonly style="background:#f5f7f6"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>SYS</label><input type="number" id="lpSys"></div>
+        <div class="form-group"><label>DIA</label><input type="number" id="lpDia"></div>
+        <div class="form-group"><label>ชีพจร</label><input type="number" id="lpPul"></div>
+        <div class="form-group"><label>น้ำตาล (mg/dL)</label><input type="number" id="lpSugar"></div>
+      </div>
+      <div id="lpChild" style="display:none;background:#e3f2fd;border-radius:8px;padding:10px 12px">
+        <div style="font-weight:600;color:#1565c0;margin-bottom:8px">👶 ข้อมูลเด็ก 0-5 ปี</div>
+        <div class="form-row">
+          <div class="form-group"><label>รอบศีรษะ (ซม.)</label><input type="number" step="0.1" id="lpHead"></div>
+          <label class="lp-chip"><input type="checkbox" id="lpVac"> วัคซีนครบ</label>
+          <label class="lp-chip"><input type="checkbox" id="lpDev" checked> พัฒนาการสมวัย</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">🏥 โรคประจำตัว (เลือกได้หลายรายการ)</div>
+      <div class="lp-grid">
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="ปกติ"> ปกติ</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="พิการ"> พิการ</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="เบาหวาน"> เบาหวาน</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="ความดัน"> ความดัน</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="โรคหัวใจ"> โรคหัวใจ</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="โรคไต"> โรคไต</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="โรคเกาต์"> โรคเกาต์</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="โรคตับ"> โรคตับ</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="โรคมะเร็ง"> โรคมะเร็ง</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="หอบหืด"> หอบหืด</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="อัมพฤกษ์"> อัมพฤกษ์</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="อัมพาต"> อัมพาต</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="ผู้ป่วยติดเตียง"> ผู้ป่วยติดเตียง</label>
+        <label class="lp-chip"><input type="checkbox" class="lpDis" value="อื่นๆ"> อื่นๆ</label>
+      </div>
+      <div class="form-group" style="margin-top:10px"><label>ประเภทความพิการ (ถ้ามี)</label>
+        <select id="lpDisType"><option value="">-- ไม่ระบุ --</option><option>พิการทางการเคลื่อนไหว</option><option>พิการทางสายตา</option><option>พิการทางการได้ยิน</option><option>พิการทางสติปัญญา</option><option>พิการซ้ำซ้อน</option><option>อื่นๆ</option></select>
+      </div>
+      <div class="form-group"><label>ระบุโรคอื่นๆ</label><input id="lpDisOther"></div>
+      <div class="form-group"><label>📝 หมายเหตุ</label><textarea id="lpNote" rows="2"></textarea></div>
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">📷 รูปภาพ</div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <img id="lpPhotoPrev" style="width:80px;height:80px;border-radius:12px;object-fit:cover;display:none">
+        <button class="btn-outline" type="button" onclick="document.getElementById('lpPhotoFile').click()">📷 เลือกรูป</button>
+        <input type="file" id="lpPhotoFile" accept="image/*" style="display:none" onchange="lpPickPhoto(this)">
+      </div>
+    </div>
+
+    <button class="btn-primary" style="width:100%;padding:12px;font-size:15px" onclick="lpSave()">💾 บันทึก</button>
+  </div>
+</div>
 <!-- Population Edit Modal -->
 <div class="modal-overlay" id="modalPopEdit">
   <div class="modal" style="max-width:580px">
@@ -1600,8 +1707,7 @@ function showPage(page, btn) {
   else if(page==='breast'){ initBrFilters(); loadBreast(); }
   else if(page==='dashboard') loadDashboard();
   else if(page==='chat') initChat();
-  else if(page==='population') loadPopulation();
-  else if(page==='lukpok'){ const f=document.getElementById('lukpokFrame'); if(!f.getAttribute('src')) f.setAttribute('src','lukpok.html'); }
+  else if(page==='lukpok') lpInit();
 }
 
 // ── ADMIN ──
@@ -3785,6 +3891,271 @@ async function startCsvImport(){
 function resetCsvImport(){csvParsedRows=[];csvHeaders=[];document.getElementById('csvFileInput').value='';document.getElementById('csvDropZone').style.display='block';document.getElementById('csvPreviewBox').style.display='none';document.getElementById('csvProgressBox').style.display='none';document.getElementById('csvResultBox').style.display='none';}
 
 // ── INIT ──
+  // ══════════ สมาชิกลูกป๊อก อสม. ══════════
+let lpAsom = null, lpList = [], lpPopCache = [], lpPhotoFile = null, lpPhotoUrl = '', lpTimer = null;
+
+async function lpInit(){
+  if(!membersData || membersData.length===0) await loadMembers();
+  if(!lpAsom){
+    const tk = localStorage.getItem('lp_token');
+    if(tk){
+      const {data} = await sb.from('asom_sessions').select('asom_id,expires_at').eq('session_token',tk).maybeSingle();
+      if(data && new Date(data.expires_at) > new Date()){
+        lpAsom = membersData.find(m=>String(m.id)===String(data.asom_id)) || null;
+      } else localStorage.removeItem('lp_token');
+    }
+  }
+  if(lpAsom) await lpLoadList();
+  lpRender();
+}
+
+function lpRender(){
+  const el = document.getElementById('lpBody');
+  if(!lpAsom){
+    const asoms = membersData.filter(m=>(m.type||'asom')==='asom')
+      .sort((a,b)=>(parseInt(a.village)||0)-(parseInt(b.village)||0)||String(a.name).localeCompare(String(b.name),'th'));
+    el.innerHTML = `<h2 class="section-title">👨‍👩‍👧 สมาชิกลูกป๊อก อสม.</h2><p class="section-sub">เข้าสู่ระบบด้วยบัญชี อสม. ของคุณ</p>
+    <div class="login-box">
+      <div class="form-group"><label>เลือก อสม. (${asoms.length} คน)</label>
+        <select id="lpSel" onchange="lpOnSelect()"><option value="">-- เลือกชื่อของคุณ --</option>
+          ${asoms.map(m=>`<option value="${m.id}">${m.name}${m.village?' (หมู่ '+m.village+')':''}</option>`).join('')}
+        </select></div>
+      <div id="lpSetPw" style="display:none;margin-top:12px">
+        <div style="background:#fff8e1;border-left:4px solid var(--gold);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px">🔐 ตั้งรหัสผ่านครั้งแรก (อย่างน้อย 6 ตัว)</div>
+        <div class="form-group"><label>รหัสผ่านใหม่</label><input type="password" id="lpPw1"></div>
+        <div class="form-group"><label>ยืนยันรหัสผ่าน</label><input type="password" id="lpPw2"></div>
+        <button class="btn-primary" style="width:100%" onclick="lpSetPassword()">💾 บันทึกรหัสผ่าน</button>
+      </div>
+      <div id="lpLoginBox" style="display:none;margin-top:12px">
+        <div class="form-group"><label>รหัสผ่าน</label><input type="password" id="lpPw" onkeydown="if(event.key==='Enter')lpLogin()"></div>
+        <div class="remember-row"><input type="checkbox" id="lpRemember"><label for="lpRemember">จดจำการเข้าสู่ระบบ 30 วัน</label></div>
+        <button class="btn-primary" style="width:100%" onclick="lpLogin()">🔑 เข้าสู่ระบบ</button>
+      </div>
+    </div>`;
+    return;
+  }
+  const rows = lpList.map(h=>{
+    const bc = bmiCat(parseFloat(h.bmi)||0);
+    const ph = h.photo_url ? `<img src="${h.photo_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : '👤';
+    const dis = Array.isArray(h.diseases) ? h.diseases.join(', ') : (h.disease||'-');
+    return `<tr><td>${ph}</td><td>${h.first_name||''} ${h.last_name||''}</td><td>${h.address||'-'}</td><td>${h.gender||'-'}</td>
+      <td>${h.birthdate?fmtDate(h.birthdate):'-'}</td><td>${h.age??'-'}</td><td>${h.phone||'-'}</td><td>${dis}</td>
+      <td>${h.height||'-'}</td><td>${h.weight||'-'}</td><td><span class="bmi-badge ${bc.cls}">${h.bmi||'-'} ${bc.label}</span></td>
+      <td>${h.blood_pressure_1||'-'}</td><td>${h.blood_sugar||'-'}</td>
+      <td><button class="btn-edit" onclick="lpEdit(${h.id})">แก้ไข</button> <button class="btn-danger" onclick="lpDelete(${h.id})">ลบ</button></td></tr>`;
+  }).join('') || '<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--gray-mid)">ยังไม่มีสมาชิก กด "เพิ่มสมาชิก"</td></tr>';
+  el.innerHTML = `<h2 class="section-title">👨‍👩‍👧 สมาชิกที่ดูแล</h2><p class="section-sub">อสม. ${lpAsom.name} | ดูแล ${lpList.length} คน</p>
+  <div class="admin-bar"><span class="admin-badge">👤 ${lpAsom.name}</span><span style="flex:1"></span>
+    <button class="btn-primary" onclick="lpOpenForm()">➕ เพิ่มสมาชิก</button>
+    <button class="btn-outline" onclick="lpExport()">📥 Export Excel</button>
+    <button class="btn-outline" onclick="lpLogout()">ออกจากระบบ</button></div>
+  <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th>รูป</th><th>ชื่อ-สกุล</th><th>ที่อยู่</th><th>เพศ</th><th>วันเกิด</th><th>อายุ</th><th>เบอร์</th><th>โรคประจำตัว</th><th>สูง</th><th>น้ำหนัก</th><th>BMI</th><th>ความดัน</th><th>น้ำตาล</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+async function lpOnSelect(){
+  const id = document.getElementById('lpSel').value;
+  document.getElementById('lpSetPw').style.display='none';
+  document.getElementById('lpLoginBox').style.display='none';
+  if(!id) return;
+  const {data} = await sb.from('asom_passwords').select('password').eq('asom_id',String(id)).maybeSingle();
+  document.getElementById(data?'lpLoginBox':'lpSetPw').style.display='block';
+}
+async function lpSetPassword(){
+  const id = document.getElementById('lpSel').value, p1 = document.getElementById('lpPw1').value, p2 = document.getElementById('lpPw2').value;
+  if(p1.length<6) return toast('รหัสผ่านต้องมีอย่างน้อย 6 ตัว','error');
+  if(p1!==p2) return toast('รหัสผ่านไม่ตรงกัน','error');
+  const {error} = await sb.from('asom_passwords').upsert({asom_id:String(id),password:p1},{onConflict:'asom_id'});
+  if(error) return toast('บันทึกไม่สำเร็จ: '+error.message,'error');
+  toast('ตั้งรหัสผ่านแล้ว'); lpOnSelect();
+}
+async function lpLogin(){
+  const id = document.getElementById('lpSel').value, pw = document.getElementById('lpPw').value;
+  const {data} = await sb.from('asom_passwords').select('password').eq('asom_id',String(id)).maybeSingle();
+  if(!data || data.password!==pw) return toast('รหัสผ่านไม่ถูกต้อง','error');
+  lpAsom = membersData.find(m=>String(m.id)===String(id));
+  if(document.getElementById('lpRemember').checked){
+    const arr = new Uint8Array(24); crypto.getRandomValues(arr);
+    const tk = Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+    const {error} = await sb.from('asom_sessions').insert({asom_id:String(id),session_token:tk,expires_at:new Date(Date.now()+30*864e5).toISOString()});
+    if(!error) localStorage.setItem('lp_token',tk);
+  }
+  await lpLoadList(); lpRender(); toast('เข้าสู่ระบบสำเร็จ');
+}
+async function lpLogout(){
+  const tk = localStorage.getItem('lp_token');
+  if(tk) await sb.from('asom_sessions').delete().eq('session_token',tk);
+  localStorage.removeItem('lp_token'); lpAsom=null; lpList=[]; lpRender();
+}
+async function lpLoadList(){
+  const {data,error} = await sb.from('health_members').select('*').eq('asom_id',String(lpAsom.id)).order('address');
+  if(error) toast('โหลดข้อมูลไม่สำเร็จ: '+error.message,'error');
+  lpList = data||[];
+}
+
+function lpCalcAge(){
+  const b = document.getElementById('lpBirth').value;
+  if(!b){ document.getElementById('lpAge').value=''; document.getElementById('lpChild').style.display='none'; return; }
+  const a = calcAge(b);
+  document.getElementById('lpAge').value = `${a.y} ปี ${a.m} เดือน ${a.d} วัน`;
+  document.getElementById('lpChild').style.display = a.y<=5 ? 'block':'none';
+}
+function lpCalcBmi(){
+  const bmi = calcBMI(parseFloat(document.getElementById('lpWeight').value), parseFloat(document.getElementById('lpHeight').value));
+  document.getElementById('lpBmi').value = bmi>0 ? bmi : '';
+}
+function lpAddr(){
+  const m = document.getElementById('lpMoo').value, h = document.getElementById('lpHouse').value.trim();
+  document.getElementById('lpAddr').value = m ? ('หมู่ '+m+(h?' บ้านเลขที่ '+h:'')) : '';
+}
+
+function lpSearchPopDelay(){ lpAddr(); clearTimeout(lpTimer); lpTimer = setTimeout(lpSearchPop,300); }
+async function lpSearchPop(){
+  lpAddr();
+  const v = document.getElementById('lpMoo').value, el = document.getElementById('lpPopList');
+  if(!v){ el.style.display='none'; return; }
+  const house = document.getElementById('lpHouse').value.trim();
+  const name = document.getElementById('lpSearch').value.trim().replace(/[,()%]/g,'');
+  let q = sb.from('population').select('id,village,house_number,full_name,gender,birthdate,phone,id_card')
+    .eq('village',parseInt(v)).order('house_number',{ascending:true}).limit(60);
+  if(house) q = q.ilike('house_number','%'+house+'%');
+  if(name) q = q.ilike('full_name','%'+name+'%');
+  el.style.display='block'; el.innerHTML='<div style="padding:10px;color:var(--gray-mid);font-size:13px">⏳ กำลังค้นหา...</div>';
+  const {data,error} = await q;
+  if(error){ el.innerHTML='<div style="padding:10px;color:#c62828;font-size:13px">'+error.message+'</div>'; return; }
+  lpPopCache = data||[];
+  el.innerHTML = lpPopCache.length ? lpPopCache.map(p=>{
+    const a = p.birthdate ? calcAge(p.birthdate).y+' ปี' : '-';
+    return `<div onclick="lpPickPop('${p.id}')" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #eef2ef;font-size:13px" onmouseenter="this.style.background='var(--green-pale)'" onmouseleave="this.style.background=''"><strong>${p.full_name}</strong> <span style="font-size:11px;color:var(--gray-mid)">บ้านเลขที่ ${p.house_number||'-'} | ${p.gender||''} | ${a}</span></div>`;
+  }).join('') : '<div style="padding:10px;color:var(--gray-mid);font-size:13px">ไม่พบข้อมูล (พิมพ์ชื่อเองด้านล่างได้)</div>';
+}
+function lpPickPop(id){
+  const p = lpPopCache.find(x=>String(x.id)===String(id)); if(!p) return;
+  const PFX = ['เด็กชาย','เด็กหญิง','นางสาว','นาง','นาย'];
+  let pre='', rest = p.full_name||'';
+  for(const x of PFX){ if(rest.startsWith(x)){ pre=x; rest=rest.slice(x.length).trim(); break; } }
+  const parts = rest.split(/\s+/);
+  document.getElementById('lpFirst').value = pre+(parts[0]||'');
+  document.getElementById('lpLast').value = parts.slice(1).join(' ');
+  document.getElementById('lpGender').value = p.gender||'';
+  document.getElementById('lpPhone').value = p.phone||'';
+  document.getElementById('lpIdCard').value = p.id_card||'';
+  document.getElementById('lpHouse').value = p.house_number||'';
+  document.getElementById('lpMoo').value = p.village||'';
+  document.getElementById('lpBirth').value = p.birthdate ? p.birthdate.substring(0,10) : '';
+  lpCalcAge(); lpAddr();
+  document.getElementById('lpPopList').style.display='none';
+  toast('ดึงข้อมูลเรียบร้อย');
+}
+
+function lpPickPhoto(inp){
+  const f = inp.files[0]; if(!f) return;
+  lpPhotoFile = f;
+  const img = document.getElementById('lpPhotoPrev');
+  img.src = URL.createObjectURL(f); img.style.display='block';
+}
+function lpSetDis(list){
+  const s = new Set(list||[]);
+  document.querySelectorAll('.lpDis').forEach(c=>c.checked = s.has(c.value));
+}
+
+function lpResetForm(){
+  ['lpEditId','lpSearch','lpHouse','lpFirst','lpLast','lpBirth','lpAge','lpPhone','lpIdCard','lpAddr','lpHeight','lpWeight','lpBmi','lpSys','lpDia','lpPul','lpSugar','lpHead','lpDisOther','lpNote'].forEach(i=>document.getElementById(i).value='');
+  ['lpMoo','lpGender','lpDisType'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('lpVac').checked=false; document.getElementById('lpDev').checked=true;
+  document.getElementById('lpChild').style.display='none';
+  document.getElementById('lpPopList').style.display='none';
+  document.getElementById('lpPhotoPrev').style.display='none';
+  lpPhotoFile=null; lpPhotoUrl=''; lpSetDis([]);
+}
+function lpOpenForm(){ lpResetForm(); document.getElementById('lpFormTitle').textContent='👤 เพิ่มสมาชิกที่ดูแล'; openModal('modalLp'); }
+function lpEdit(id){
+  const h = lpList.find(x=>x.id===id); if(!h) return;
+  lpResetForm();
+  document.getElementById('lpFormTitle').textContent='✏️ แก้ไขสมาชิก';
+  document.getElementById('lpEditId').value = h.id;
+  const am = (h.address||'').match(/หมู่\s*(\d+)/), ah = (h.address||'').match(/บ้านเลขที่\s*(.+)/);
+  document.getElementById('lpMoo').value = am?am[1]:'';
+  document.getElementById('lpHouse').value = ah?ah[1].trim():'';
+  document.getElementById('lpFirst').value = h.first_name||'';
+  document.getElementById('lpLast').value = h.last_name||'';
+  document.getElementById('lpGender').value = h.gender||'';
+  document.getElementById('lpBirth').value = h.birthdate ? h.birthdate.substring(0,10) : '';
+  document.getElementById('lpPhone').value = h.phone||'';
+  document.getElementById('lpIdCard').value = h.id_card||'';
+  document.getElementById('lpHeight').value = h.height||'';
+  document.getElementById('lpWeight').value = h.weight||'';
+  document.getElementById('lpSugar').value = h.blood_sugar||'';
+  document.getElementById('lpHead').value = h.head_size||'';
+  const bp = (h.blood_pressure_1||'').split('/');
+  document.getElementById('lpSys').value = bp[0]||''; document.getElementById('lpDia').value = bp[1]||''; document.getElementById('lpPul').value = bp[2]||'';
+  document.getElementById('lpDisType').value = h.disability_type||'';
+  document.getElementById('lpDisOther').value = h.disease_other||'';
+  document.getElementById('lpNote').value = h.disease_note||'';
+  document.getElementById('lpVac').checked = !!h.vaccine_completed;
+  document.getElementById('lpDev').checked = h.development_normal!==false;
+  lpSetDis(Array.isArray(h.diseases)?h.diseases:[]);
+  if(h.photo_url){ lpPhotoUrl=h.photo_url; const img=document.getElementById('lpPhotoPrev'); img.src=h.photo_url; img.style.display='block'; }
+  lpCalcAge(); lpCalcBmi(); lpAddr();
+  openModal('modalLp');
+}
+
+async function lpSave(){
+  const first = document.getElementById('lpFirst').value.trim();
+  if(!first) return toast('กรุณากรอกชื่อ','error');
+  const birth = document.getElementById('lpBirth').value;
+  const age = birth ? calcAge(birth).y : null;
+  const diseases = [...document.querySelectorAll('.lpDis:checked')].map(c=>c.value);
+  const sys = document.getElementById('lpSys').value, dia = document.getElementById('lpDia').value, pul = document.getElementById('lpPul').value;
+  const bp = sys&&dia ? sys+'/'+dia+(pul?'/'+pul:'') : null;
+  const btn = document.querySelector('#modalLp .btn-primary'); btn.disabled=true; btn.textContent='กำลังบันทึก...';
+  try{
+    let photo = lpPhotoUrl;
+    if(lpPhotoFile){ toast('กำลังอัปโหลดรูป...'); photo = await uploadCloudinary(lpPhotoFile); }
+    const num = id => parseFloat(document.getElementById(id).value)||null;
+    const payload = {
+      asom_id:String(lpAsom.id), caretaker:lpAsom.name,
+      first_name:first, last_name:document.getElementById('lpLast').value.trim(),
+      address:document.getElementById('lpAddr').value, id_card:document.getElementById('lpIdCard').value.trim(),
+      phone:document.getElementById('lpPhone').value.trim(), gender:document.getElementById('lpGender').value||null,
+      birthdate:birth||null, age,
+      disease:diseases.join(', '), diseases,
+      disability_type:diseases.includes('พิการ')?(document.getElementById('lpDisType').value||null):null,
+      disease_other:diseases.includes('อื่นๆ')?(document.getElementById('lpDisOther').value||null):null,
+      disease_note:document.getElementById('lpNote').value.trim()||null,
+      height:num('lpHeight'), weight:num('lpWeight'), bmi:num('lpBmi'),
+      blood_pressure_1:bp, blood_pressure:bp, blood_sugar:num('lpSugar'), head_size:num('lpHead'),
+      vaccine_completed:document.getElementById('lpVac').checked, development_normal:document.getElementById('lpDev').checked,
+      photo_url:photo||''
+    };
+    const editId = document.getElementById('lpEditId').value;
+    const res = editId ? await sb.from('health_members').update(payload).eq('id',Number(editId)).select()
+                       : await sb.from('health_members').insert(payload).select();
+    if(res.error) throw res.error;
+    if(!res.data || !res.data.length) throw new Error('บันทึกไม่เข้าฐานข้อมูล (ตรวจสอบ RLS ของตาราง health_members)');
+    closeModal('modalLp'); toast('บันทึกเรียบร้อย ✅');
+    await lpLoadList(); lpRender();
+  }catch(e){ toast('เกิดข้อผิดพลาด: '+(e.message||e),'error'); }
+  btn.disabled=false; btn.textContent='💾 บันทึก';
+}
+async function lpDelete(id){
+  if(!confirm('ลบสมาชิกนี้?')) return;
+  const {error} = await sb.from('health_members').delete().eq('id',id);
+  if(error) return toast('ลบไม่สำเร็จ: '+error.message,'error');
+  toast('ลบเรียบร้อย'); await lpLoadList(); lpRender();
+}
+function lpExport(){
+  if(!lpList.length) return toast('ยังไม่มีข้อมูล','error');
+  const rows = lpList.map((h,i)=>({
+    'ลำดับ':i+1,'ชื่อ':h.first_name,'นามสกุล':h.last_name,'เพศ':h.gender,'อายุ':h.age,'วันเกิด':h.birthdate,
+    'ที่อยู่':h.address,'เลขบัตร':h.id_card,'เบอร์โทร':h.phone,
+    'โรคประจำตัว':Array.isArray(h.diseases)?h.diseases.join(', '):h.disease,
+    'ส่วนสูง':h.height,'น้ำหนัก':h.weight,'BMI':h.bmi,'ความดัน':h.blood_pressure_1,'น้ำตาล':h.blood_sugar,
+    'รอบศีรษะ':h.head_size,'วัคซีนครบ':h.vaccine_completed?'ครบ':'ไม่ครบ','พัฒนาการ':h.development_normal?'สมวัย':'ล่าช้า','อสม.':h.caretaker
+  }));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows),'สมาชิกที่ดูแล');
+  XLSX.writeFile(wb,'lukpok_'+new Date().toISOString().substring(0,10)+'.xlsx');
+  toast('Export Excel เรียบร้อย');
+}
 document.addEventListener('DOMContentLoaded', async ()=>{
   if(sessionStorage.getItem('admin_wk_session')==='1') isAdmin=true;
   const {data:mq}=await sb.from('settings').select('*').eq('key','marquee').maybeSingle();
