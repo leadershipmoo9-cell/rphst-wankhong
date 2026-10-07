@@ -232,6 +232,19 @@
     .chat-img-preview{display:none;padding:8px 14px;background:#f5f7f6;border-top:1.5px solid var(--green-pale);align-items:center;gap:10px;flex-shrink:0}
     .chat-img-preview.show{display:flex}
     .chat-img-preview img{width:56px;height:56px;object-fit:cover;border-radius:8px}
+    /* โรคประจำตัว / PHQ */
+.chronic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.chk-chip{display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px solid #dde8e1;border-radius:10px;cursor:pointer;font-size:14px;background:white;transition:.15s}
+.chk-chip:hover{border-color:var(--green-light)}
+.chk-chip:has(input:checked){background:#e8f5ee;border-color:var(--green-mid);font-weight:600}
+.chk-chip input{width:18px;height:18px;accent-color:var(--green-mid);flex-shrink:0}
+.dep-q{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 0;border-bottom:1px dashed #dde8e1;font-size:13px}
+.dep-q:last-of-type{border-bottom:none}
+.dep-q .dep-text{flex:1;min-width:240px}
+.dep-q .dep-opts{display:flex;gap:18px}
+.dep-q label{display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;color:var(--green-dark)}
+.dep-q input{width:17px;height:17px;accent-color:var(--green-mid)}
+@media(max-width:600px){.chronic-grid{grid-template-columns:repeat(2,1fr)}}
   </style>
 </head>
 <body>
@@ -414,7 +427,7 @@
     </div>
     <div class="summary-grid" id="healthStats"></div>
     <div class="table-wrap"><div class="table-scroll"><table>
-      <thead><tr><th>ปี</th><th>เดือน</th><th>วัน/เวลา</th><th>อสม.ผู้คัดกรอง</th><th>หมู่</th><th>ชื่อ-สกุล</th><th>เพศ</th><th>วันเกิด (พ.ศ.)</th><th>อายุ</th><th>เลขบัตร</th><th>เบอร์โทร</th><th>น้ำหนัก</th><th>ส่วนสูง</th><th>BMI</th><th>รอบเอว</th><th>การศึกษา</th><th>อาชีพ</th><th>สถานภาพ</th><th>ความดัน1 (SYS/DIA/ชีพจร)</th><th>ความดัน2 (SYS/DIA/ชีพจร)</th><th>ความดัน3 (SYS/DIA/ชีพจร)</th><th>ค่าความดันเฉลี่ย</th><th>กลุ่มความดัน</th><th>น้ำตาล</th><th>ค่าน้ำตาล</th><th>กลุ่มน้ำตาล</th><th>สูบบุหรี่</th><th>มวน/วัน</th><th>ชนิดบุหรี่</th><th>ระยะเวลาสูบ</th><th>แอลกอฮอล์</th><th>วัน/สัปดาห์</th><th>ภาวะซึมเศร้า</th><th></th></tr></thead>
+      <thead><tr><th>ปี</th><th>เดือน</th><th>วัน/เวลา</th><th>อสม.ผู้คัดกรอง</th><th>หมู่</th><th>ชื่อ-สกุล</th><th>เพศ</th><th>วันเกิด (พ.ศ.)</th><th>อายุ</th><th>เลขบัตร</th><th>เบอร์โทร</th><th>น้ำหนัก</th><th>ส่วนสูง</th><th>BMI</th><th>รอบเอว</th><th>การศึกษา</th><th>อาชีพ</th><th>สถานภาพ</th><th>ความดัน1 (SYS/DIA/ชีพจร)</th><th>ความดัน2 (SYS/DIA/ชีพจร)</th><th>ความดัน3 (SYS/DIA/ชีพจร)</th><th>ค่าความดันเฉลี่ย</th><th>กลุ่มความดัน</th><th>น้ำตาล</th><th>ค่าน้ำตาล</th><th>กลุ่มน้ำตาล</th><th>สูบบุหรี่</th><th>มวน/วัน</th><th>ชนิดบุหรี่</th><th>ระยะเวลาสูบ</th><th>แอลกอฮอล์</th><th>วัน/สัปดาห์</th><th>ภาวะซึมเศร้า</th><th>โรคประจำตัว</th><th>หมายเหตุโรคประจำตัว</th><th>PHQ Q1/Q2/Q3</th><th></th></tr></thead>
       <tbody id="healthTable"></tbody>
     </table></div></div>
   </div>
@@ -1065,6 +1078,28 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
       <div id="hSugarResult" style="margin-top:6px"></div>
     </div>
     <div class="health-section">
+  <div class="health-section-title">🩺 โรคประจำตัว (เลือกได้หลายรายการ)</div>
+  <div class="chronic-grid">
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="ปกติ" onchange="onChronicChange(this)"> ปกติ</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="พิการ" onchange="onChronicChange(this)"> พิการ</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="เบาหวาน" onchange="onChronicChange(this)"> เบาหวาน</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="ความดัน" onchange="onChronicChange(this)"> ความดัน</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="โรคหัวใจ" onchange="onChronicChange(this)"> โรคหัวใจ</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="โรคไต" onchange="onChronicChange(this)"> โรคไต</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="โรคเกาต์" onchange="onChronicChange(this)"> โรคเกาต์</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="โรคตับ" onchange="onChronicChange(this)"> โรคตับ</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="โรคมะเร็ง" onchange="onChronicChange(this)"> โรคมะเร็ง</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="หอบหืด" onchange="onChronicChange(this)"> หอบหืด</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="อัมพฤกษ์" onchange="onChronicChange(this)"> อัมพฤกษ์</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="อัมพาต" onchange="onChronicChange(this)"> อัมพาต</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="ผู้ป่วยติดเตียง" onchange="onChronicChange(this)"> ผู้ป่วยติดเตียง</label>
+    <label class="chk-chip"><input type="checkbox" class="hChronic" value="อื่นๆ" onchange="onChronicChange(this)"> อื่นๆ</label>
+  </div>
+  <div class="form-group"><label>📝 หมายเหตุ / บันทึกเพิ่มเติม</label>
+    <textarea id="hChronicNote" rows="3" placeholder="บันทึกข้อมูลเพิ่มเติม เช่น ประวัติการรักษา ยาที่ใช้ หรือข้อสังเกตอื่นๆ..."></textarea>
+  </div>
+</div>
+    <div class="health-section">
       <div class="health-section-title">🚬 การสูบบุหรี่</div>
       <div class="form-group"><label>คัดกรองผู้สูบบุหรี่</label><select id="hSmoke" onchange="toggleSmokeFields()"><option value="ไม่สูบ">ไม่สูบ</option><option value="สูบ">สูบ</option><option value="เคยสูบ">เคยสูบ (เลิกแล้ว)</option></select></div>
       <div id="hSmokeFields" style="display:none">
@@ -1084,6 +1119,30 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
       <div class="health-section-title">🧠 ภาวะซึมเศร้า (PHQ-2)</div>
       <div class="form-group"><label>รู้สึกหดหู่ เศร้า ท้อแท้ ในช่วง 2 สัปดาห์ที่ผ่านมา</label>
         <select id="hDepression"><option value="">-- เลือก --</option><option>ไม่มีเลย</option><option>เป็นบางวัน</option><option>บ่อยครั้ง</option><option>เกือบทุกวัน</option></select>
+      <div style="margin-top:12px;border-top:2px solid var(--green-pale);padding-top:8px">
+  <div class="dep-q">
+    <div class="dep-text">Q1. ในช่วง 2 สัปดาห์ที่ผ่านมา คุณรู้สึกหดหู่ / เศร้า / ท้อแท้ / สิ้นหวัง บ้างหรือไม่ ?</div>
+    <div class="dep-opts">
+      <label><input type="checkbox" id="hQ1Yes" onchange="onDepChk(1,'yes')"> มี</label>
+      <label><input type="checkbox" id="hQ1No" onchange="onDepChk(1,'no')"> ไม่มี</label>
+    </div>
+  </div>
+  <div class="dep-q">
+    <div class="dep-text">Q2. ในช่วง 2 สัปดาห์ที่ผ่านมา คุณรู้สึกเบื่อ / ทำอะไรไม่เพลิดเพลินใจ บ้างหรือไม่ ?</div>
+    <div class="dep-opts">
+      <label><input type="checkbox" id="hQ2Yes" onchange="onDepChk(2,'yes')"> มี</label>
+      <label><input type="checkbox" id="hQ2No" onchange="onDepChk(2,'no')"> ไม่มี</label>
+    </div>
+  </div>
+  <div class="dep-q">
+    <div class="dep-text">Q3. ใน 1 เดือนที่ผ่านมา รวมวันนี้ ท่านรู้สึกทุกข์ใจจนไม่อยากมีชีวิตอยู่ หรือไม่ ?</div>
+    <div class="dep-opts">
+      <label><input type="radio" name="hQ3" id="hQ3Yes" value="มี" onchange="updateDepResult()"> มี</label>
+      <label><input type="radio" name="hQ3" id="hQ3No" value="ไม่มี" onchange="updateDepResult()"> ไม่มี</label>
+    </div>
+  </div>
+  <div id="hDepResult" style="margin-top:8px"></div>
+</div>
       </div>
     </div>
     <button class="btn-primary" style="width:100%;padding:12px;font-size:15px;margin-top:8px" onclick="saveHealth()">💾 บันทึกข้อมูลคัดกรอง</button>
@@ -1873,7 +1932,7 @@ function renderHealthTable(){
   const NORMAL_BP=['ปกติ','เหมาะสม','ความดันปกติ'];const bpAbnormal=list.filter(r=>r.bp_group&&!NORMAL_BP.includes(r.bp_group)&&r.bp_group!=='-').length;
   const sugarAbnormal=list.filter(r=>r.sugar_group&&r.sugar_group!=='ปกติ'&&r.sugar_group!=='-').length;
   document.getElementById('healthStats').innerHTML=`<div class="sum-card"><h3>จำนวนที่คัดกรอง</h3><div class="sum-num">${list.length}</div><div class="sum-unit">ราย</div></div><div class="sum-card" style="border-top-color:#2e7d32"><h3>ความดันปกติ</h3><div class="sum-num" style="color:#2e7d32">${list.filter(r=>NORMAL_BP.includes(r.bp_group)).length}</div><div class="sum-unit">ราย</div></div><div class="sum-card" style="border-top-color:#c62828"><h3>ความดันสูง</h3><div class="sum-num" style="color:#c62828">${bpAbnormal}</div><div class="sum-unit">ราย</div></div><div class="sum-card" style="border-top-color:#f57f17"><h3>เสี่ยง/เบาหวาน</h3><div class="sum-num" style="color:#f57f17">${sugarAbnormal}</div><div class="sum-unit">ราย</div></div>`;
-  document.getElementById('healthTable').innerHTML=list.length===0?'<tr><td colspan="34" style="text-align:center;padding:40px;color:var(--gray-mid)">ไม่มีข้อมูล</td></tr>':list.map(r=>{const bc=bmiCat(r.bmi);const bp=bpColor(r.bp_avg_sys,r.bp_avg_dia);const sg=sugarColor(r.blood_sugar);return`<tr><td>${r.year}</td><td>${MONTHS_TH[(r.month||1)-1]}</td><td>${r.screen_date||''} ${r.screen_time||''}</td><td>${r.screener_name||''}</td><td>${r.village||''}</td><td>${r.full_name}</td><td>${r.gender||'-'}</td><td>${r.birthdate?new Date(r.birthdate).toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'}):'-'}</td><td>${r.age_years||0}ปี ${r.age_months||0}ด</td><td>${fmtIdCard(r.id_card)}</td><td>${r.phone||''}</td><td>${r.weight||0} กก.</td><td>${r.height||0} ซม.</td><td><span class="bmi-badge ${bc.cls}">${r.bmi||0} (${r.bmi_category||''})</span></td><td>${r.waist||0} ซม.</td><td>${r.education||''}</td><td>${r.occupation||''}</td><td>${r.marital_status||''}</td><td>${r.bp1_sys||'-'}/${r.bp1_dia||'-'}/${r.bp1_pulse||'-'}</td><td>${r.bp2_sys||'-'}/${r.bp2_dia||'-'}/${r.bp2_pulse||'-'}</td><td>${r.bp3_sys||'-'}/${r.bp3_dia||'-'}/${r.bp3_pulse||'-'}</td><td><span class="${bp.cls}">${r.bp_avg_sys||'-'}/${r.bp_avg_dia||'-'}</span></td><td>${r.bp_group||''}</td><td>${r.blood_sugar||0} mg/dL</td><td><span class="${sg.cls}">${r.sugar_color||''}</span></td><td>${r.sugar_group||''}</td><td>${r.smoke||''}</td><td>${r.smoke==='ไม่สูบ'?'-':r.smoke_per_day||0}</td><td>${r.smoke==='ไม่สูบ'?'-':r.smoke_type||''}</td><td>${r.smoke==='ไม่สูบ'?'-':r.smoke_duration||''}</td><td>${r.alcohol||''}</td><td>${r.alcohol==='ไม่ดื่ม'?'-':r.alcohol_per_week||''}</td><td>${r.depression1||''}</td><td><button class="btn-edit" onclick="openEditHealth('${r.id}')">แก้ไข</button><button class="btn-danger" style="margin-top:4px" onclick="deleteHealth('${r.id}')">ลบ</button></td></tr>`;}).join('');
+  document.getElementById('healthTable').innerHTML=list.length===0?'<tr><td colspan="34" style="text-align:center;padding:40px;color:var(--gray-mid)">ไม่มีข้อมูล</td></tr>':list.map(r=>{const bc=bmiCat(r.bmi);const bp=bpColor(r.bp_avg_sys,r.bp_avg_dia);const sg=sugarColor(r.blood_sugar);return`<tr><td>${r.year}</td><td>${MONTHS_TH[(r.month||1)-1]}</td><td>${r.screen_date||''} ${r.screen_time||''}</td><td>${r.screener_name||''}</td><td>${r.village||''}</td><td>${r.full_name}</td><td>${r.gender||'-'}</td><td>${r.birthdate?new Date(r.birthdate).toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'}):'-'}</td><td>${r.age_years||0}ปี ${r.age_months||0}ด</td><td>${fmtIdCard(r.id_card)}</td><td>${r.phone||''}</td><td>${r.weight||0} กก.</td><td>${r.height||0} ซม.</td><td><span class="bmi-badge ${bc.cls}">${r.bmi||0} (${r.bmi_category||''})</span></td><td>${r.waist||0} ซม.</td><td>${r.education||''}</td><td>${r.occupation||''}</td><td>${r.marital_status||''}</td><td>${r.bp1_sys||'-'}/${r.bp1_dia||'-'}/${r.bp1_pulse||'-'}</td><td>${r.bp2_sys||'-'}/${r.bp2_dia||'-'}/${r.bp2_pulse||'-'}</td><td>${r.bp3_sys||'-'}/${r.bp3_dia||'-'}/${r.bp3_pulse||'-'}</td><td><span class="${bp.cls}">${r.bp_avg_sys||'-'}/${r.bp_avg_dia||'-'}</span></td><td>${r.bp_group||''}</td><td>${r.blood_sugar||0} mg/dL</td><td><span class="${sg.cls}">${r.sugar_color||''}</span></td><td>${r.sugar_group||''}</td><td>${r.smoke||''}</td><td>${r.smoke==='ไม่สูบ'?'-':r.smoke_per_day||0}</td><td>${r.smoke==='ไม่สูบ'?'-':r.smoke_type||''}</td><td>${r.smoke==='ไม่สูบ'?'-':r.smoke_duration||''}</td><td>${r.alcohol||''}</td><td>${r.alcohol==='ไม่ดื่ม'?'-':r.alcohol_per_week||''}</td><td>${r.depression1||''}</td><td>${r.chronic_diseases||'-'}</td><td>${r.chronic_note||'-'}</td><td>${r.depression_q1||'-'}/${r.depression_q2||'-'}/${r.depression_q3||'-'}</td><td><button class="btn-edit" onclick="openEditHealth('${r.id}')">แก้ไข</button><button class="btn-danger" style="margin-top:4px" onclick="deleteHealth('${r.id}')">ลบ</button></td></tr>`;}).join('');
 }
 async function openHealthForm(){
   editingHealthId=null;if(!membersData||membersData.length===0) await loadMembers();
@@ -1897,7 +1956,9 @@ async function openHealthForm(){
   document.getElementById('hSugarResult').innerHTML='';
   document.getElementById('hAgeDisplay').style.display='none';
   ['hBp1s','hBp1d','hBp1p','hBp2s','hBp2d','hBp2p','hBp3s','hBp3d','hBp3p','hWeight','hHeight','hWaist','hSugar'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  toggleSmokeFields();toggleAlcoholFields();openModal('modalHealthForm');
+  setChronic('');document.getElementById('hChronicNote').value='';
+setDepQ('','','');
+toggleSmokeFields();toggleAlcoholFields();openModal('modalHealthForm');
 }
 async function openEditHealth(id){
   const r=healthData.find(x=>x.id===id);if(!r)return;
@@ -1932,6 +1993,46 @@ function calcBpAuto(){const readings=[];[['hBp1s','hBp1d'],['hBp2s','hBp2d'],['h
 function calcSugarAuto(){const v=parseInt(document.getElementById('hSugar').value);const c=sugarColor(v);document.getElementById('hSugarResult').innerHTML=c.cls?`<span class="${c.cls}" style="font-size:13px;padding:4px 12px">${c.label}</span>`:'';}
 function toggleSmokeFields(){document.getElementById('hSmokeFields').style.display=document.getElementById('hSmoke').value==='ไม่สูบ'?'none':'block';}
 function toggleAlcoholFields(){document.getElementById('hAlcoholFields').style.display=document.getElementById('hAlcohol').value==='ไม่ดื่ม'?'none':'block';}
+  // ── โรคประจำตัว ──
+function onChronicChange(el){
+  const all=[...document.querySelectorAll('.hChronic')];
+  if(el.checked){
+    if(el.value==='ปกติ') all.forEach(c=>{ if(c!==el) c.checked=false; });
+    else all.forEach(c=>{ if(c.value==='ปกติ') c.checked=false; });
+  }
+}
+function getChronic(){ return [...document.querySelectorAll('.hChronic:checked')].map(c=>c.value).join(', '); }
+function setChronic(str){
+  const set=new Set((str||'').split(',').map(s=>s.trim()).filter(Boolean));
+  document.querySelectorAll('.hChronic').forEach(c=>c.checked=set.has(c.value));
+}
+
+// ── ซึมเศร้า Q1-Q3 ──
+function onDepChk(q, which){
+  const y=document.getElementById('hQ'+q+'Yes'), n=document.getElementById('hQ'+q+'No');
+  if(which==='yes' && y.checked) n.checked=false;
+  if(which==='no' && n.checked) y.checked=false;
+  updateDepResult();
+}
+function getDepChk(q){
+  if(document.getElementById('hQ'+q+'Yes').checked) return 'มี';
+  if(document.getElementById('hQ'+q+'No').checked) return 'ไม่มี';
+  return '';
+}
+function getDepQ3(){ const r=document.querySelector('input[name="hQ3"]:checked'); return r?r.value:''; }
+function setDepQ(q1,q2,q3){
+  document.getElementById('hQ1Yes').checked=(q1==='มี'); document.getElementById('hQ1No').checked=(q1==='ไม่มี');
+  document.getElementById('hQ2Yes').checked=(q2==='มี'); document.getElementById('hQ2No').checked=(q2==='ไม่มี');
+  document.getElementById('hQ3Yes').checked=(q3==='มี'); document.getElementById('hQ3No').checked=(q3==='ไม่มี');
+  updateDepResult();
+}
+function updateDepResult(){
+  const q1=getDepChk(1), q2=getDepChk(2), q3=getDepQ3();
+  const el=document.getElementById('hDepResult'); let html='';
+  if(q1==='มี'||q2==='มี') html+='<div style="background:#fff3e0;border:1.5px solid #ffb74d;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;color:#e65100;margin-bottom:6px">⚠️ ตอบ "มี" ในข้อ Q1/Q2 — ควรประเมินต่อด้วยแบบประเมินโรคซึมเศร้า (9Q)</div>';
+  if(q3==='มี') html+='<div style="background:#ffebee;border:1.5px solid #ef9a9a;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;color:#c62828">🚨 ตอบ "มี" ในข้อ Q3 — ควรส่งต่อเจ้าหน้าที่ รพสต. ประเมินเพิ่มเติมโดยเร็ว</div>';
+  el.innerHTML=html;
+}
 async function saveHealth(){
   const full_name=document.getElementById('hFullName').value.trim();if(!full_name)return toast('กรุณากรอกชื่อ-สกุล','error');
   const screener=document.getElementById('hScreener').value;if(!screener)return toast('กรุณาเลือก อสม.ผู้คัดกรอง','error');
@@ -1948,7 +2049,9 @@ async function saveHealth(){
   const sgC=sugarColor(sug),sgG=sugarGroup(sug);
   const birth=document.getElementById('hBirth').value;const age=calcAge(birth);
   const smoke=document.getElementById('hSmoke').value,alcohol=document.getElementById('hAlcohol').value;
-  const payload={year:parseInt(document.getElementById('hYear').value),month:parseInt(document.getElementById('hMonth').value),screen_date:document.getElementById('hDate').value,screen_time:document.getElementById('hTime').value,screener_name:screener,gender:(document.getElementById('hGender')?.value||''),village:parseInt(document.getElementById('hVillage').value)||null,address:document.getElementById('hAddress').value,full_name,birthdate:birth,age_years:age.y,age_months:age.m,age_days:age.d,id_card:document.getElementById('hIdCard').value,phone:document.getElementById('hPhone').value,weight:w,height:h,bmi,bmi_category:bmiC.label,waist:parseFloat(document.getElementById('hWaist').value)||0,education:document.getElementById('hEdu').value,occupation:document.getElementById('hOccupy').value,marital_status:document.getElementById('hMarital').value,bp1_sys:bp1s,bp1_dia:bp1d,bp1_pulse:bp1p,bp2_sys:bp2s,bp2_dia:bp2d,bp2_pulse:bp2p,bp3_sys:bp3s,bp3_dia:bp3d,bp3_pulse:bp3p,bp_avg_sys:avgS,bp_avg_dia:avgD,bp_color:bpC.label,bp_group:bpG,blood_sugar:sug,sugar_color:sgC.label,sugar_group:sgG,smoke,smoke_per_day:smoke==='ไม่สูบ'?0:parseInt(document.getElementById('hSmokeQty').value)||0,smoke_type:smoke==='ไม่สูบ'?'':document.getElementById('hSmokeType').value,smoke_duration:smoke==='ไม่สูบ'?'':document.getElementById('hSmokeDur').value,alcohol,alcohol_per_week:alcohol==='ไม่ดื่ม'?'':document.getElementById('hAlcoholQty').value,depression1:document.getElementById('hDepression').value};
+  const payload={year:parseInt(document.getElementById('hYear').value),month:parseInt(document.getElementById('hMonth').value),screen_date:document.getElementById('hDate').value,screen_time:document.getElementById('hTime').value,screener_name:screener,gender:(document.getElementById('hGender')?.value||''),village:parseInt(document.getElementById('hVillage').value)||null,address:document.getElementById('hAddress').value,full_name,birthdate:birth,age_years:age.y,age_months:age.m,age_days:age.d,id_card:document.getElementById('hIdCard').value,phone:document.getElementById('hPhone').value,weight:w,height:h,bmi,bmi_category:bmiC.label,waist:parseFloat(document.getElementById('hWaist').value)||0,education:document.getElementById('hEdu').value,occupation:document.getElementById('hOccupy').value,marital_status:document.getElementById('hMarital').value,bp1_sys:bp1s,bp1_dia:bp1d,bp1_pulse:bp1p,bp2_sys:bp2s,bp2_dia:bp2d,bp2_pulse:bp2p,bp3_sys:bp3s,bp3_dia:bp3d,bp3_pulse:bp3p,bp_avg_sys:avgS,bp_avg_dia:avgD,bp_color:bpC.label,bp_group:bpG,blood_sugar:sug,sugar_color:sgC.label,sugar_group:sgG,smoke,smoke_per_day:smoke==='ไม่สูบ'?0:parseInt(document.getElementById('hSmokeQty').value)||0,smoke_type:smoke==='ไม่สูบ'?'':document.getElementById('hSmokeType').value,smoke_duration:smoke==='ไม่สูบ'?'':document.getElementById('hSmokeDur').value,alcohol,alcohol_per_week:alcohol==='ไม่ดื่ม'?'':document.getElementById('hAlcoholQty').value,depression1:document.getElementById('hDepression').value,
+chronic_diseases:getChronic(),chronic_note:document.getElementById('hChronicNote').value||'',
+depression_q1:getDepChk(1),depression_q2:getDepChk(2),depression_q3:getDepQ3()};
   if(editingHealthId)await sb.from('health_screening').update(payload).eq('id',editingHealthId);else await sb.from('health_screening').insert(payload);
   closeModal('modalHealthForm');toast(editingHealthId?'แก้ไขเรียบร้อย':'บันทึกเรียบร้อย');loadHealth();
 }
@@ -3244,7 +3347,8 @@ async function exportHealthScreeningExcel(){
     'ความดันเฉลี่ย SYS':r.bp_avg_sys,'ความดันเฉลี่ย DIA':r.bp_avg_dia,
     'กลุ่มความดัน':r.bp_group,'น้ำตาลในเลือด(mg/dL)':r.blood_sugar,'กลุ่มน้ำตาล':r.sugar_group,
     'สูบบุหรี่':r.smoke,'มวน/วัน':r.smoke_per_day,'ชนิดบุหรี่':r.smoke_type,'ระยะเวลาสูบ':r.smoke_duration,
-    'ดื่มแอลกอฮอล์':r.alcohol,'วัน/สัปดาห์':r.alcohol_per_week,'ภาวะซึมเศร้า':r.depression1
+    'ดื่มแอลกอฮอล์':r.alcohol,'วัน/สัปดาห์':r.alcohol_per_week,'ภาวะซึมเศร้า':r.depression1,'โรคประจำตัว':r.chronic_diseases,'หมายเหตุโรคประจำตัว':r.chronic_note,
+'PHQ Q1':r.depression_q1,'PHQ Q2':r.depression_q2,'PHQ Q3':r.depression_q3
   }));
   const ws=XLSX.utils.json_to_sheet(rows);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'คัดกรองสุขภาพ');
