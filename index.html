@@ -280,6 +280,7 @@
     <button class="nav-btn" onclick="showPage('health',this)">🩺 คัดกรองสุขภาพประจำปี</button>
     <button class="nav-btn" onclick="showPage('childnutrition',this)">👶 คัดกรองโภชนาการเด็ก 0-5 ปี</button>
     <button class="nav-btn" onclick="showPage('cervical',this)">🔬 คัดกรองมะเร็งปากมดลูก</button>
+    <button class="nav-btn" onclick="showPage('breast',this)">🎗️ คัดกรองมะเร็งเต้านม</button>
     <button class="nav-btn" onclick="showPage('dashboard',this)">📊 Dashboard</button>
     <button class="nav-btn" onclick="showPage('chat',this)">💬 ห้องแชท อสม.</button>
     <button class="nav-btn" onclick="showPage('contact',this)">📞 ติดต่อเรา</button>
@@ -548,6 +549,54 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
       <tbody id="cervTable"></tbody>
     </table></div></div>
   </div>
+  <!-- ── คัดกรองมะเร็งเต้านมด้วยตนเอง อายุ 20 ปีขึ้นไป ── -->
+<div id="page-breast" class="page">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div>
+      <h2 class="section-title">🎗️ คัดกรองมะเร็งเต้านมด้วยตนเอง อายุ 20 ปีขึ้นไป</h2>
+      <p class="section-sub">บันทึกผลการตรวจคัดกรองมะเร็งเต้านมด้วยตนเองของประชาชนหญิงอายุ 20 ปีขึ้นไป</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-primary" onclick="openBreastForm()">➕ บันทึกการคัดกรอง</button>
+      <button class="btn-outline" onclick="exportBreastExcel()">📥 Export Excel</button>
+    </div>
+  </div>
+
+  <div class="sql-hint" id="brSqlHint" style="display:none">
+    <h4>⚙️ ยังไม่มีตาราง breast_screening — กรุณารัน SQL ใน Supabase แล้วรีโหลดหน้านี้</h4>
+    <button class="btn-outline" style="margin-top:8px;font-size:12px" onclick="document.getElementById('brSqlHint').style.display='none'">ปิด ✕</button>
+  </div>
+
+  <div class="filter-bar">
+    <select id="filterBrYear" onchange="loadBreast()"></select>
+    <select id="filterBrMonth" onchange="loadBreast()"><option value="0">ทุกเดือน</option></select>
+    <select id="filterBrVillage" onchange="loadBreast()">
+      <option value="">ทุกหมู่</option>
+      <option value="8">หมู่ 8</option><option value="9">หมู่ 9</option>
+      <option value="11">หมู่ 11</option><option value="13">หมู่ 13</option>
+      <option value="14">หมู่ 14</option><option value="16">หมู่ 16</option>
+    </select>
+    <select id="filterBrResult" onchange="renderBreastTable()">
+      <option value="">ทุกผล</option>
+      <option value="ปกติ">ปกติ</option>
+      <option value="ผิดปกติ">ผิดปกติ</option>
+    </select>
+    <input id="filterBrSearch" placeholder="ค้นหาชื่อ / อสม..." oninput="renderBreastTable()" style="min-width:200px;padding:7px 10px;border:1.5px solid #dde8e1;border-radius:8px;font-family:Sarabun;font-size:13px" />
+  </div>
+
+  <div class="summary-grid" id="brStats"></div>
+
+  <div class="table-wrap"><div class="table-scroll"><table>
+    <thead><tr>
+      <th>ปี</th><th>เดือน</th><th>วัน/เวลา</th>
+      <th>อสม.ผู้คัดกรอง</th><th>เบอร์ อสม.</th>
+      <th>หมู่</th><th>บ้านเลขที่</th>
+      <th>ชื่อ-สกุล</th><th>วันเกิด</th><th>อายุ</th><th>เบอร์โทร</th>
+      <th>ผลการตรวจด้วยตนเอง</th><th>หมายเหตุ</th><th></th>
+    </tr></thead>
+    <tbody id="brTable"></tbody>
+  </table></div></div>
+</div>
 
    <!-- ── Dashboard ── -->
   <div id="page-dashboard" class="page">
@@ -564,6 +613,7 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
       <button class="tab-btn dash-tab" data-type="health" onclick="setDashType('health')">🩺 คัดกรองสุขภาพประจำปี</button>
       <button class="tab-btn dash-tab" data-type="child" onclick="setDashType('child')">👶 โภชนาการเด็ก 0-5 ปี</button>
       <button class="tab-btn dash-tab" data-type="cervical" onclick="setDashType('cervical')">🔬 มะเร็งปากมดลูก</button>
+      <button class="tab-btn dash-tab" data-type="breast" onclick="setDashType('breast')">🎗️ มะเร็งเต้านม</button>
       <button class="tab-btn dash-tab" data-type="population" onclick="setDashType('population')">👥 จำนวนประชากร</button>
     </div>
     <div class="filter-bar">
@@ -1230,7 +1280,97 @@ CREATE POLICY "allow_all" ON public.cervical_screening FOR ALL USING (true) WITH
     <button class="btn-primary" style="width:100%;padding:12px;font-size:15px;margin-top:8px" onclick="saveCervical()">💾 บันทึกข้อมูล</button>
   </div>
 </div>
+<!-- ══ Modal: คัดกรองมะเร็งเต้านมด้วยตนเอง ══ -->
+<div class="modal-overlay" id="modalBreast">
+  <div class="modal" style="max-width:820px">
+    <button class="modal-close" onclick="closeModal('modalBreast')">×</button>
+    <h2>🎗️ บันทึกคัดกรองมะเร็งเต้านมด้วยตนเอง อายุ 20 ปีขึ้นไป</h2>
 
+    <div class="health-section">
+      <div class="health-section-title">📋 ข้อมูลการคัดกรอง</div>
+      <div class="form-row">
+        <div class="form-group"><label>ปี พ.ศ.</label><select id="brYear"></select></div>
+        <div class="form-group"><label>เดือน</label><select id="brMonth"></select></div>
+        <div class="form-group"><label>วันที่</label><input type="date" id="brDate" /></div>
+        <div class="form-group"><label>เวลา</label><input type="time" id="brTime" /></div>
+      </div>
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">🌿 อสม.ผู้คัดกรอง</div>
+      <div class="form-row">
+        <div class="form-group"><label>หมู่ที่</label>
+          <select id="brScreenerVillage" onchange="updateBrScreenerList()">
+            <option value="">-- ทุกหมู่ --</option>
+            <option value="8">หมู่ 8</option><option value="9">หมู่ 9</option>
+            <option value="11">หมู่ 11</option><option value="13">หมู่ 13</option>
+            <option value="14">หมู่ 14</option><option value="16">หมู่ 16</option>
+          </select>
+        </div>
+        <div class="form-group"><label>อสม.ผู้คัดกรอง *</label>
+          <select id="brScreener" onchange="fillBrScreenerPhone()"><option value="">-- เลือก อสม. --</option></select>
+        </div>
+        <div class="form-group"><label>เบอร์โทร อสม. (อัตโนมัติ)</label>
+          <input id="brScreenerPhone" readonly style="background:#f5f7f6" placeholder="จะแสดงอัตโนมัติ" />
+        </div>
+      </div>
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">🔍 เลือกผู้รับบริการจากฐานข้อมูลประชากร <span style="font-size:11px;color:var(--gray-mid);font-weight:400">(หญิง อายุ 20 ปีขึ้นไป)</span></div>
+      <div style="background:var(--green-pale);border-radius:10px;padding:14px 16px;margin-bottom:14px;border:1.5px dashed var(--green-light)">
+        <p style="font-size:12px;color:var(--text-sub);margin-bottom:10px">👉 เลือก <strong>หมู่ที่</strong> ก่อน → กรอก <strong>บ้านเลขที่</strong> หรือชื่อ → รายชื่อจะแสดงอัตโนมัติ</p>
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-group"><label>หมู่ที่ *</label>
+            <select id="brPopVillage" onchange="loadBreastPopList()">
+              <option value="">-- เลือกหมู่ที่ --</option>
+              <option value="8">หมู่ 8</option><option value="9">หมู่ 9</option>
+              <option value="11">หมู่ 11</option><option value="13">หมู่ 13</option>
+              <option value="14">หมู่ 14</option><option value="16">หมู่ 16</option>
+            </select>
+          </div>
+          <div class="form-group"><label>บ้านเลขที่</label><input id="brPopHouseNo" placeholder="เช่น 129, 2/3" oninput="filterBreastPopList()" /></div>
+          <div class="form-group"><label>ค้นหาชื่อ</label><input id="brPopSearch" placeholder="พิมพ์ชื่อ..." oninput="filterBreastPopList()" /></div>
+        </div>
+        <div id="brPopList" style="border:1.5px solid var(--green-light);border-radius:8px;overflow:hidden;max-height:220px;overflow-y:auto;background:white;display:none"></div>
+        <div id="brPopSelected" style="display:none;background:white;border:1.5px solid var(--green-mid);border-radius:8px;padding:8px 12px;margin-top:8px;font-size:13px;color:var(--green-dark);font-weight:600"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="flex:2;min-width:200px"><label>ชื่อ-สกุล *</label><input id="brFullName" placeholder="ชื่อ-สกุล" /></div>
+        <div class="form-group"><label>วันเกิด (ค.ศ.)</label><input type="date" id="brBirth" oninput="calcBrAge()" /></div>
+        <div class="form-group"><label>อายุ (อัตโนมัติ)</label><input id="brAgeDisplay" readonly style="background:#f5f7f6" placeholder="อัตโนมัติ" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>เบอร์โทร</label><input id="brPhone" placeholder="0XX-XXX-XXXX" /></div>
+        <div class="form-group"><label>หมู่ที่</label>
+          <select id="brVillage">
+            <option value="">-- เลือกหมู่ --</option>
+            <option value="8">หมู่ 8</option><option value="9">หมู่ 9</option>
+            <option value="11">หมู่ 11</option><option value="13">หมู่ 13</option>
+            <option value="14">หมู่ 14</option><option value="16">หมู่ 16</option>
+          </select>
+        </div>
+        <div class="form-group"><label>บ้านเลขที่</label><input id="brHouseNo" placeholder="บ้านเลขที่" /></div>
+      </div>
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">✅ ผลการตรวจคัดกรองด้วยตนเอง</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:10px;padding:12px 22px;border:2px solid #a5d6a7;background:#e8f5e9;border-radius:10px;cursor:pointer;font-size:16px;font-weight:700;color:#2e7d32">
+          <input type="checkbox" id="brResNormal" onchange="onBrResult('normal')" style="width:20px;height:20px;accent-color:#2e7d32" /> ✅ ปกติ
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;padding:12px 22px;border:2px solid #ef9a9a;background:#ffebee;border-radius:10px;cursor:pointer;font-size:16px;font-weight:700;color:#c62828">
+          <input type="checkbox" id="brResAbnormal" onchange="onBrResult('abnormal')" style="width:20px;height:20px;accent-color:#c62828" /> ⚠️ ผิดปกติ
+        </label>
+      </div>
+      <div class="form-group"><label>หมายเหตุ</label><input id="brNote" placeholder="เช่น พบก้อนที่เต้านมข้างซ้าย / ส่งต่อ รพ." /></div>
+    </div>
+
+    <button class="btn-primary" style="width:100%;padding:12px;font-size:15px;margin-top:8px" onclick="saveBreast()">💾 บันทึกข้อมูล</button>
+  </div>
+</div>
 <!-- Population Edit Modal -->
 <div class="modal-overlay" id="modalPopEdit">
   <div class="modal" style="max-width:580px">
@@ -1320,6 +1460,9 @@ let editingNewsId = null;
 let editingHealthId = null;
 let editingCnId = null;
 let editingCervId = null;
+let breastData = [];
+let breastPopCache = [];
+let brSearchTimer = null;
 let newsMemberFiles = [];
 let newsMemberExisting = [];
 let chatName = localStorage.getItem('chat_name_wk') || '';
@@ -1390,6 +1533,7 @@ function showPage(page, btn) {
   else if(page==='health'){ initHealthFilters(); loadHealth(); }
   else if(page==='childnutrition'){ initCnFilters(); loadChildNutrition(); }
   else if(page==='cervical'){ initCervFilters(); loadCervical(); }
+  else if(page==='breast'){ initBrFilters(); loadBreast(); }
   else if(page==='dashboard') loadDashboard();
   else if(page==='chat') initChat();
   else if(page==='population') loadPopulation();
@@ -2432,7 +2576,269 @@ async function deleteCervical(id) {
   await sb.from('cervical_screening').delete().eq('id',id);
   toast('ลบเรียบร้อย'); loadCervical();
 }
+// ══════════════════════════════════════════════════════════════
+// คัดกรองมะเร็งเต้านมด้วยตนเอง อายุ 20 ปีขึ้นไป
+// ══════════════════════════════════════════════════════════════
+function initBrFilters() {
+  const ys = document.getElementById('filterBrYear');
+  if(!ys.innerHTML) { ys.innerHTML = YEARS_LIST.map(y=>`<option value="${y}">${y}</option>`).join(''); ys.value = new Date().getFullYear()+543; }
+  const ms = document.getElementById('filterBrMonth');
+  if(ms.options.length === 1) MONTHS_TH.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; ms.appendChild(o); });
+  const by = document.getElementById('brYear');
+  if(!by.innerHTML) by.innerHTML = YEARS_LIST.map(y=>`<option value="${y}">${y}</option>`).join('');
+  const bm = document.getElementById('brMonth');
+  if(!bm.innerHTML) MONTHS_TH.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; bm.appendChild(o); });
+}
 
+async function loadBreast() {
+  const y = document.getElementById('filterBrYear').value;
+  const m = document.getElementById('filterBrMonth').value;
+  const v = document.getElementById('filterBrVillage').value;
+  let q = sb.from('breast_screening').select('*').eq('year', y).order('screen_date',{ascending:false});
+  if(m > 0) q = q.eq('month', m);
+  if(v) q = q.eq('village', parseInt(v));
+  const {data, error} = await q;
+  if(error) {
+    document.getElementById('brSqlHint').style.display='block';
+    document.getElementById('brTable').innerHTML='<tr><td colspan="14" style="text-align:center;padding:20px;color:#c62828">⚠️ ยังไม่มีตาราง breast_screening — กรุณารัน SQL ใน Supabase ก่อน แล้วรีโหลดหน้านี้</td></tr>';
+    return;
+  }
+  document.getElementById('brSqlHint').style.display='none';
+  breastData = data||[];
+  renderBreastTable();
+}
+
+function renderBreastTable() {
+  const q = (document.getElementById('filterBrSearch').value||'').toLowerCase();
+  const res = document.getElementById('filterBrResult').value;
+  const list = breastData.filter(r=>{
+    const nameMatch = !q || r.full_name?.toLowerCase().includes(q) || r.screener_name?.toLowerCase().includes(q);
+    return nameMatch && (!res || r.result === res);
+  });
+  const total = list.length;
+  const normal = list.filter(r=>r.result==='ปกติ').length;
+  const abnormal = list.filter(r=>r.result==='ผิดปกติ').length;
+  document.getElementById('brStats').innerHTML=`
+    <div class="sum-card"><h3>คัดกรองทั้งหมด</h3><div class="sum-num">${total}</div><div class="sum-unit">ราย</div></div>
+    <div class="sum-card" style="border-top-color:#2e7d32"><h3>ผลปกติ</h3><div class="sum-num" style="color:#2e7d32">${normal}</div><div class="sum-unit">ราย</div></div>
+    <div class="sum-card" style="border-top-color:#c62828"><h3>ผลผิดปกติ</h3><div class="sum-num" style="color:#c62828">${abnormal}</div><div class="sum-unit">ราย</div></div>`;
+  document.getElementById('brTable').innerHTML = list.length===0
+    ? '<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--gray-mid)">ไม่มีข้อมูล</td></tr>'
+    : list.map(r=>{
+        const cls = r.result==='ปกติ' ? 'cerv-yes' : 'cerv-no';
+        return `<tr>
+          <td>${r.year||''}</td><td>${MONTHS_TH[(r.month||1)-1]}</td>
+          <td>${r.screen_date||''} ${r.screen_time||''}</td>
+          <td>${r.screener_name||'-'}</td><td>${r.screener_phone||'-'}</td>
+          <td>${r.village||'-'}</td><td>${r.house_number||'-'}</td>
+          <td><strong>${r.full_name}</strong></td>
+          <td>${r.birthdate?new Date(r.birthdate).toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'}):'-'}</td>
+          <td>${r.age_years||0} ปี</td>
+          <td>${r.phone||'-'}</td>
+          <td><span class="${cls}">${r.result||'-'}</span></td>
+          <td>${r.note||'-'}</td>
+          <td><button class="btn-danger" onclick="deleteBreast('${r.id}')">ลบ</button></td>
+        </tr>`;
+      }).join('');
+}
+
+async function openBreastForm() {
+  if(!membersData || membersData.length===0) await loadMembers();
+  initBrFilters();
+  const now = new Date();
+  document.getElementById('brDate').value = now.toISOString().substring(0,10);
+  document.getElementById('brTime').value = now.toTimeString().substring(0,5);
+  document.getElementById('brYear').value = now.getFullYear()+543;
+  document.getElementById('brMonth').value = now.getMonth()+1;
+  ['brScreenerVillage','brVillage','brPopVillage'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['brFullName','brBirth','brPhone','brHouseNo','brNote','brAgeDisplay','brScreenerPhone','brPopSearch','brPopHouseNo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('brResNormal').checked = false;
+  document.getElementById('brResAbnormal').checked = false;
+  document.getElementById('brPopList').style.display='none';
+  document.getElementById('brPopList').innerHTML='';
+  document.getElementById('brPopSelected').style.display='none';
+  breastPopCache = [];
+  updateBrScreenerList();
+  openModal('modalBreast');
+}
+
+// ติ๊กได้ทีละช่อง (ปกติ / ผิดปกติ)
+function onBrResult(which) {
+  const n = document.getElementById('brResNormal'), a = document.getElementById('brResAbnormal');
+  if(which==='normal' && n.checked) a.checked = false;
+  if(which==='abnormal' && a.checked) n.checked = false;
+}
+function getBrResult() {
+  if(document.getElementById('brResNormal').checked) return 'ปกติ';
+  if(document.getElementById('brResAbnormal').checked) return 'ผิดปกติ';
+  return '';
+}
+
+async function updateBrScreenerList() {
+  if(!membersData || membersData.length===0) await loadMembers();
+  const village = parseInt(document.getElementById('brScreenerVillage').value)||0;
+  const sc = document.getElementById('brScreener');
+  const prev = sc.value;
+  sc.innerHTML = '<option value="">-- เลือก อสม. --</option>';
+  const asoms = membersData.filter(m=>m.type==='asom' && (!village || parseInt(m.village)===village));
+  asoms.sort((a,b)=>(a.position_order||5)-(b.position_order||5)).forEach(m=>{
+    const o = document.createElement('option');
+    o.value = m.name;
+    o.textContent = m.name + (m.position_label?' — '+m.position_label:'') + (m.phone?' | '+m.phone:'') + (m.village?' (หมู่ '+m.village+')':'');
+    sc.appendChild(o);
+  });
+  if(prev && [...sc.options].some(o=>o.value===prev)) sc.value=prev;
+  fillBrScreenerPhone();
+}
+function fillBrScreenerPhone() {
+  const name = document.getElementById('brScreener').value;
+  const member = membersData.find(m=>m.name===name);
+  document.getElementById('brScreenerPhone').value = member ? (member.phone||'') : '';
+}
+
+// ค้นหาหญิงอายุ 20 ปีขึ้นไป จากฐานข้อมูลโดยตรง (กรองที่ฝั่ง Supabase)
+async function loadBreastPopList() {
+  const village = document.getElementById('brPopVillage').value;
+  const el = document.getElementById('brPopList');
+  if(!village) {
+    breastPopCache = [];
+    el.style.display = 'block';
+    el.innerHTML = '<div style="padding:12px 14px;color:var(--gray-mid);font-size:13px">กรุณาเลือกหมู่ที่ก่อน</div>';
+    return;
+  }
+  const brV = document.getElementById('brVillage'); if(brV) brV.value = village;
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px 14px;color:var(--gray-mid);font-size:13px">⏳ กำลังค้นหา...</div>';
+  const houseNo = (document.getElementById('brPopHouseNo').value||'').trim();
+  const search = (document.getElementById('brPopSearch').value||'').trim().replace(/[,()%]/g,'');
+  const now = new Date();
+  const maxDate = new Date(now.getFullYear()-20, now.getMonth(), now.getDate()); // ครบ 20 ปีแล้ว
+  let q = sb.from('population')
+    .select('id,village,house_number,full_name,gender,birthdate,phone')
+    .eq('village', parseInt(village))
+    .eq('gender', 'หญิง')
+    .lte('birthdate', cnLocalIso(maxDate))
+    .order('house_number', {ascending:true})
+    .limit(100);
+  if(houseNo) q = q.ilike('house_number', '%'+houseNo+'%');
+  if(search) q = q.ilike('full_name', '%'+search+'%');
+  const {data, error} = await q;
+  if(error) { el.innerHTML = '<div style="padding:12px 14px;color:#c62828;font-size:13px">❌ ค้นหาไม่สำเร็จ: '+error.message+'</div>'; return; }
+  breastPopCache = data||[];
+  renderBreastPopList();
+}
+function filterBreastPopList() {
+  if(!document.getElementById('brPopVillage').value) return;
+  clearTimeout(brSearchTimer);
+  brSearchTimer = setTimeout(loadBreastPopList, 300);
+}
+function renderBreastPopList() {
+  const el = document.getElementById('brPopList');
+  el.style.display = 'block';
+  if(breastPopCache.length === 0) {
+    el.innerHTML = '<div style="padding:12px 14px;color:var(--gray-mid);font-size:13px">ไม่พบหญิงอายุ 20 ปีขึ้นไป ตามเงื่อนไขนี้ (หรือพิมพ์ชื่อด้านล่างเองได้)</div>';
+    return;
+  }
+  el.innerHTML = breastPopCache.map(p=>{
+    const a = calcAge(p.birthdate);
+    return `<div onclick="selectBreastPop('${p.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eef2ef;font-size:13px" onmouseenter="this.style.background='var(--green-pale)'" onmouseleave="this.style.background=''">
+      <strong>${p.full_name}</strong>
+      <span style="margin-left:8px;font-size:11px;color:var(--gray-mid)">บ้านเลขที่ ${p.house_number||'-'} | อายุ ${a.y} ปี | ${p.phone||''}</span>
+    </div>`;
+  }).join('');
+}
+function selectBreastPop(id) {
+  const p = breastPopCache.find(x=>String(x.id)===String(id));
+  if(!p) return;
+  document.getElementById('brFullName').value = p.full_name||'';
+  document.getElementById('brPhone').value = p.phone||'';
+  document.getElementById('brHouseNo').value = p.house_number||'';
+  if(p.village) document.getElementById('brVillage').value = p.village;
+  if(p.birthdate) { document.getElementById('brBirth').value = p.birthdate.substring(0,10); calcBrAge(); }
+  const badge = document.getElementById('brPopSelected');
+  badge.innerHTML = `✅ เลือกแล้ว: <strong>${p.full_name}</strong> บ้านเลขที่ ${p.house_number||'-'}`;
+  badge.style.display = 'block';
+  document.getElementById('brPopList').style.display = 'none';
+  toast('เลือกข้อมูลเรียบร้อย');
+}
+function calcBrAge() {
+  const b = document.getElementById('brBirth').value;
+  if(!b) { document.getElementById('brAgeDisplay').value=''; return; }
+  const a = calcAge(b);
+  document.getElementById('brAgeDisplay').value = `${a.y} ปี ${a.m} เดือน`;
+}
+
+async function saveBreast() {
+  const full_name = document.getElementById('brFullName').value.trim();
+  if(!full_name) return toast('กรุณากรอกชื่อ-สกุล','error');
+  const screener = document.getElementById('brScreener').value;
+  if(!screener) return toast('กรุณาเลือก อสม.ผู้คัดกรอง','error');
+  const result = getBrResult();
+  if(!result) return toast('กรุณาติ๊กผลการตรวจ (ปกติ / ผิดปกติ)','error');
+  const birth = document.getElementById('brBirth').value;
+  const ageY = birth ? calcAge(birth).y : 0;
+  const payload = {
+    year: parseInt(document.getElementById('brYear').value),
+    month: parseInt(document.getElementById('brMonth').value),
+    screen_date: document.getElementById('brDate').value,
+    screen_time: document.getElementById('brTime').value,
+    village: parseInt(document.getElementById('brVillage').value)||null,
+    house_number: document.getElementById('brHouseNo').value||null,
+    screener_name: screener,
+    screener_phone: document.getElementById('brScreenerPhone').value||null,
+    full_name,
+    gender: 'หญิง',
+    birthdate: birth||null,
+    age_years: ageY,
+    phone: document.getElementById('brPhone').value||null,
+    result,
+    note: document.getElementById('brNote').value||null
+  };
+  const btn = document.querySelector('#modalBreast .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='กำลังบันทึก...';}
+  const {error} = await sb.from('breast_screening').insert(payload);
+  if(btn){btn.disabled=false;btn.textContent='💾 บันทึกข้อมูล';}
+  if(error) return toast('เกิดข้อผิดพลาด: '+error.message,'error');
+  closeModal('modalBreast');
+  toast('บันทึกข้อมูลเรียบร้อย ✅');
+  loadBreast();
+}
+
+async function deleteBreast(id) {
+  if(!confirm('ลบข้อมูลนี้?')) return;
+  await sb.from('breast_screening').delete().eq('id',id);
+  toast('ลบเรียบร้อย'); loadBreast();
+}
+
+async function exportBreastExcel(){
+  const y=document.getElementById('filterBrYear').value||new Date().getFullYear()+543;
+  const m=document.getElementById('filterBrMonth').value;
+  const v=document.getElementById('filterBrVillage').value;
+  const res=document.getElementById('filterBrResult').value;
+  toast('กำลังโหลดข้อมูล...');
+  let q=sb.from('breast_screening').select('*').eq('year',y).order('screen_date',{ascending:true});
+  if(m>0) q=q.eq('month',m);
+  if(v) q=q.eq('village',parseInt(v));
+  if(res) q=q.eq('result',res);
+  const {data,error}=await q;
+  if(error){toast('เกิดข้อผิดพลาด: '+error.message,'error');return;}
+  if(!data||data.length===0){toast('ไม่มีข้อมูลสำหรับตัวกรองที่เลือก','error');return;}
+  const s=(document.getElementById('filterBrSearch').value||'').toLowerCase();
+  const list=s?data.filter(r=>(r.full_name&&r.full_name.toLowerCase().includes(s))||(r.screener_name&&r.screener_name.toLowerCase().includes(s))):data;
+  if(list.length===0){toast('ไม่มีข้อมูลที่ตรงกับการค้นหา','error');return;}
+  const rows=list.map(r=>({
+    'ปี':r.year,'เดือน':MONTHS_TH[(r.month||1)-1],'วันที่คัดกรอง':r.screen_date,'เวลา':r.screen_time,
+    'อสม.ผู้คัดกรอง':r.screener_name,'เบอร์ อสม.':r.screener_phone,
+    'หมู่':r.village,'บ้านเลขที่':r.house_number,
+    'ชื่อ-สกุล':r.full_name,'วันเกิด':r.birthdate,'อายุ(ปี)':r.age_years,'เบอร์โทร':r.phone,
+    'ผลการตรวจด้วยตนเอง':r.result,'หมายเหตุ':r.note
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:6},{wch:12},{wch:14},{wch:8},{wch:22},{wch:14},{wch:6},{wch:12},{wch:24},{wch:12},{wch:8},{wch:14},{wch:18},{wch:24}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'มะเร็งเต้านม');
+  XLSX.writeFile(wb,'breast_screening_'+y+(m>0?'_เดือน'+m:'')+(v?'_หมู่'+v:'')+(res?'_'+res:'')+'.xlsx');
+  toast('Export Excel เรียบร้อย ('+rows.length+' รายการ)');
+}
 // ── DASHBOARD (เลือกหมวด + ส่งออก Excel / Word / PDF) ──
 let dashType = 'overview';
 let dashReport = null;
@@ -2513,7 +2919,7 @@ async function loadDashboard() {
   document.getElementById('dashYearMonthBox').style.display = dashType === 'population' ? 'none' : 'flex';
   const box = document.getElementById('dashBody');
   box.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
-  const builders = { overview: buildDashOverview, health: buildDashHealth, child: buildDashChild, cervical: buildDashCervical, population: buildDashPopulation };
+  const builders = { overview: buildDashOverview, health: buildDashHealth, child: buildDashChild, cervical: buildDashCervical, breast: buildDashBreast, population: buildDashPopulation };
   try {
     dashReport = await builders[dashType](dashFilters());
     renderDashReport();
@@ -2661,7 +3067,36 @@ async function buildDashCervical(f) {
     rows: list.map(r => [r.year, MONTHS_TH[(r.month || 1) - 1], r.screen_date || '', r.screener_name || '', r.screener_phone || '', r.village || '', r.house_number || '', r.full_name || '', r.birthdate || '', r.age_years ?? '', r.phone || '', r.intention || '', r.note || ''])
   };
 }
-
+// ── มะเร็งเต้านมด้วยตนเอง ──
+async function buildDashBreast(f) {
+  const list = (await dashFetchAll('breast_screening', '*', q => dashApplyFilter(q, f)))
+    .sort((a, b) => String(b.screen_date || '').localeCompare(String(a.screen_date || '')));
+  const total = list.length;
+  const normal = list.filter(r => r.result === 'ปกติ').length;
+  const abnormal = list.filter(r => r.result === 'ผิดปกติ').length;
+  const ageGroup = r => { const a = r.age_years || 0; if (a < 20) return 'ต่ำกว่า 20 ปี'; if (a <= 29) return '20-29 ปี'; if (a <= 39) return '30-39 ปี'; if (a <= 49) return '40-49 ปี'; if (a <= 59) return '50-59 ปี'; return '60 ปีขึ้นไป'; };
+  const scr = dashCount(list, r => r.screener_name);
+  const top = {}; Object.entries(scr).sort((a, b) => b[1] - a[1]).slice(0, 10).forEach(([k, n]) => top[k] = n);
+  return {
+    title: 'รายงานคัดกรองมะเร็งเต้านมด้วยตนเอง อายุ 20 ปีขึ้นไป',
+    filterText: dashFilterText(f),
+    cards: [
+      { label: 'คัดกรองทั้งหมด', value: total, unit: 'ราย' },
+      { label: 'ผลปกติ', value: normal, unit: 'ราย', color: '#2e7d32' },
+      { label: 'ผลผิดปกติ', value: abnormal, unit: 'ราย', color: '#c62828' },
+      { label: 'ร้อยละผิดปกติ', value: dashPct(abnormal, total), unit: '', color: '#e65100' }
+    ],
+    charts: [
+      dashChart('ผลการตรวจด้วยตนเอง', 'pie', dashCount(list, r => r.result), { 'ปกติ': '#2e7d32', 'ผิดปกติ': '#c62828', 'ไม่ระบุ': '#9e9e9e' }),
+      dashChart('จำนวนรายหมู่', 'bar', dashByVillage(list, r => r.village)),
+      dashChart('กลุ่มอายุ', 'bar', dashCount(list, ageGroup)),
+      dashChart('อสม.ผู้คัดกรองสูงสุด 10 อันดับ', 'bar', top)
+    ],
+    detailTitle: 'รายละเอียดผู้รับการคัดกรอง',
+    columns: ['ปี','เดือน','วันที่คัดกรอง','อสม.ผู้คัดกรอง','เบอร์ อสม.','หมู่','บ้านเลขที่','ชื่อ-สกุล','วันเกิด','อายุ (ปี)','เบอร์โทร','ผลการตรวจ','หมายเหตุ'],
+    rows: list.map(r => [r.year, MONTHS_TH[(r.month || 1) - 1], r.screen_date || '', r.screener_name || '', r.screener_phone || '', r.village || '', r.house_number || '', r.full_name || '', r.birthdate || '', r.age_years ?? '', r.phone || '', r.result || '', r.note || ''])
+  };
+}
 // ── จำนวนประชากร ──
 async function buildDashPopulation(f) {
   const list = await dashFetchAll('population', 'id,village,gender,birthdate', q => f.village ? q.eq('village', f.village) : q);
